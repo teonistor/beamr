@@ -1,10 +1,10 @@
 ---
-title: "Beam"
+title: "Beamr"
 description: "Python-based minimal markup language for Beamer"
 ---
 # What's this?
 
-Py-Beams is a markup language for creating PDF slide shows from simple, easy to understand text files.
+Beamr is a markup language for creating PDF slide shows from simple, easy to understand text files.
 
 Please note: the language, its interpreter, as well as this very page, are currently under active and heavy development. This makes right now the perfect time to suggest features and discover problems (after I publish the repo, of course).
 
@@ -12,12 +12,12 @@ Please note: the language, its interpreter, as well as this very page, are curre
 
 ## Installation
 
-Currently the program is in an early stage of development and has not been published to PyPI, please [download a copy from Github](https://github.com/teonistor/py-beams/zipball/master) and run the package locally: `python -m pybeams`
+Currently the program is in an early stage of development and has not been published to PyPI, please [download a copy from Github](https://github.com/teonistor/beamr/zipball/master) and run the package locally: `python -m beamr`
 
 To more easily run it from any directory set up two aliases in `~/.bashrc` and run the first one once when the terminal is first started:
 ```
- alias setbeam='export PYTHONPATH=/path/to/beam/parent/folder:$PYTHONPATH'
- alias beam='python -m pybeams'
+ alias setbeamr='export PYTHONPATH=/path/to/beamr/parent/folder:$PYTHONPATH'
+ alias beamr='python -m beamr'
 ```
 
 ## Configuration
@@ -50,7 +50,7 @@ Examples:
 	- option,otheroption,myotherpackage
 
 
-To edit the user configuration file use the `-e` (or `--edit`) flag and supply your preferred text editor, e.g.: `python -m pybeams -e kate`. On subsequent runs the editor can be ommitted as it will be saved in the configuration.
+To edit the user configuration file use the `-e` (or `--edit`) flag and supply your preferred text editor, e.g.: `python -m beamr -e kate`. On subsequent runs the editor can be ommitted as it will be saved in the configuration.
 
 ## Dependencies
 
@@ -322,4 +322,4 @@ At any point in the document comments can be given by using the hash symbol `#`.
 
 # Full document examples
 
-You can [download these examples from the repository](https://github.com/teonistor/py-beams/tree/examples) when they become available.
+You can [download these examples from the repository](https://github.com/teonistor/beamr/tree/examples) when they become available.
