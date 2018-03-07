@@ -4,28 +4,46 @@ description: "Python-based minimal markup language for Beamer"
 ---
 # What's this?
 
-Beamr is a markup language for creating PDF slide shows from simple, easy to understand text files.
+Beamr is a markup language (and interpreter thereof) for creating PDF slide shows from simple, easy to understand text files.
 
-Please note: the language, its interpreter, as well as this very page, are currently under active and heavy development. This makes right now the perfect time to suggest features and discover problems (after I publish the repo, of course).
+Please note: the language, its interpreter, as well as this very page, are currently under active development. This makes right now the perfect time to suggest features and discover problems.
 
 # Using the interpreter
 
 ## Installation
 
-Currently the program is in an early stage of development and has not been published to PyPI, please [download a copy from Github](https://github.com/teonistor/beamr/zipball/master) and run the package locally: `python -m beamr`
+Simplest way, install from PyPI: `pip install beamr`
 
-To more easily run it from any directory set up two aliases in `~/.bashrc` and run the first one once when the terminal is first started:
+This will give you access to the `beamr` executable. Alternatively, [download a copy from Github](https://github.com/teonistor/beamr/zipball/master) and run the package locally: `python -m beamr` (with the various caveats of doing so, circumventable by setting shell aliases, paths etc)
+
+## Dependencies
+
+The interpreter runs on Python 2.7 and 3.4 onwards. It has been most heavily tested on 3.4 and 3.6 therefore bugs are more likely on 2.7 (and please use the most up-to-date version anyway).
+
+The following Python packages are mandatory and will be added automatically when installing using Pip:
+- `ply`
+- `pyaml`
+- `docopt`
+
+The intended use of the program requires `pdflatex` to be called internally; for this a number of `texlive` packages are required and can be installed from the system package manager, e.g.:
 ```
- alias setbeamr='export PYTHONPATH=/path/to/beamr/parent/folder:$PYTHONPATH'
- alias beamr='python -m beamr'
+ apt install texlive-generic-recommended texlive-fonts-recommended texlive-font-utils texlive-extra-utils texlive-latex-base
 ```
+(These are the packages I have installed on my system and it works. Perhaps not all of them are needed.)
+
+However if you plan to simply generate LaTeX sources to use in an external engine (e.g. Sharelatex) you can do so without having texlive installed at all.
+
+Optional dependencies:
+- `PIL` package for certain more advanced image arrangement features
+- `pygmentize` executable for code listings using the *minted* environment
+
 
 ## Configuration
 
 The program employs cascade-style configuration where many of the LaTeX constructs are defined and can therefore be altered if the user so desires. Configuration can be given in a number of places which take the following order of precedence:
 1. Command-line general configuration override (e.g. `--config='scheme: albatross'`)
 1. Input file Yaml blocks, top-down (examples below)
-1. User configuration file Yaml blocks, top-down
+1. User configuration file (`~/.beamrrc`) Yaml blocks, top-down (examples below)
 1. Implicit configuration dictionary (as defined in `beam.interpreters.config`)
 
 Examples:
@@ -50,22 +68,7 @@ Examples:
 	- option,otheroption,myotherpackage
 
 
-To edit the user configuration file use the `-e` (or `--edit`) flag and supply your preferred text editor, e.g.: `python -m beamr -e kate`. On subsequent runs the editor can be ommitted as it will be saved in the configuration.
-
-## Dependencies
-
-The interpreter requires at least Python 3.5 and the following packages:
-- `ply`
-- `yaml`
-- `docopt`
-
-The first 2 are included in the standard Anaconda installation; `docopt` can be installed using `pip`.
-
-Optional dependencies:
-- `PIL` for certain more advanced image arrangement features
-- `Pygments` code listings using the *minted* environment
-
-
+To edit the user configuration file use the `-e` (or `--edit`) flag and supply your preferred text editor, e.g.: `beamr -e kate`. On subsequent runs the editor can be ommitted as it will be saved in the configuration (unless you purposefully remove it).
 # Language specification
 
 ## Document structure
