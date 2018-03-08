@@ -1,4 +1,4 @@
-from pybeams.menu import main
+from beamr.cli import main
 from sys import exit
 
 exit(main())

@@ -1,6 +1,9 @@
 .settings
 .project
 .pydevproject
+*.egg-info
 *.pyc
 *_parsedbg
 *_parsetab.py
+testenv-*
+dist/

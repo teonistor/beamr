@@ -4,8 +4,8 @@ Created on 1 Feb 2018
 @author: Teodor Gherasim Nistor
 '''
 
-from pybeams.debug import warn
-from pybeams.interpreters.textual import Text
+from beamr.debug import warn
+from beamr.interpreters.textual import Text
 
 
 class Macro(Text):

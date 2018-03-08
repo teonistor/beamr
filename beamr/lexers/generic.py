@@ -3,7 +3,7 @@ Created on 1 Feb 2018
 
 @author: Teodor Gherasim Nistor
 '''
-from pybeams.debug import warn
+from beamr.debug import warn
 
 def t_error(t):
     warn ('Skip lexing error..', t)

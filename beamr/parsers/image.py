@@ -3,10 +3,10 @@ Created on 15 Feb 2018
 
 @author: Teodor Gherasim Nistor
 '''
-import pybeams.debug as debug
-from pybeams.parsers.generic import p_nil  # Used internally by yacc() @UnusedImport
+import beamr.debug as debug
+from beamr.parsers.generic import p_nil  # Used internally by yacc() @UnusedImport
 from ply import yacc
-from pybeams.lexers.image import tokens  # Used internally by yacc() @UnusedImport
+from beamr.lexers.image import tokens  # Used internally by yacc() @UnusedImport
 
 start = 'main'
 

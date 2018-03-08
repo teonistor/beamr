@@ -3,12 +3,12 @@ Created on 1 Feb 2018
 
 @author: Teodor Gherasim Nistor
 '''
-from pybeams.debug import debug, warn
-from pybeams.lexers import docLexer, slideLexer
-from pybeams.parsers import docParser, slideParser
-from pybeams.interpreters.config import Config
+from beamr.debug import debug, warn
+from beamr.lexers import docLexer, slideLexer
+from beamr.parsers import docParser, slideParser
+from beamr.interpreters import Config, VerbatimEnv
 
-class Hierarchy:
+class Hierarchy(object):
 
     def __init__(self, children, before='', after='', inter=''):
         self.children = children
@@ -44,40 +44,46 @@ class Document(Hierarchy):
                     'date'     : '\\date{%s}\n'}
 
     def __init__(self, txt):
-        super().__init__(docParser.parse(txt, docLexer), after=self.end)
+        if txt.find('\t') > -1:
+            txt = txt.replace('\t','    ')
+            warn("Input file has tabs, which will be considered 4 spaces; but please don't use tabs!")
+        super(Document, self).__init__(docParser.parse(txt, docLexer), after=self.end)
 
-        # Collect configuration from inbetween slides
-        Config.resolve(self.children)
+        # Collect all kinds of configuration
+        Config.resolve()
         debug('Final config', Config.effectiveConfig)
 
-        # Post-factum list and column resolution
+        # Post-factum list, column, and verbatim environment resolution
         ListItem.resolve(self.children)
         Column.resolve(self.children)
+        VerbatimEnv.resolve()
 
         # Document class and package commands
-        self.addCmdWithOptionalParam(self.docClassCmd, Config.effectiveConfig['docclass'])
+        packageDef = self.splitCmd(self.docClassCmd, Config.getRaw('docclass'))
         for pkg in Config.effectiveConfig['packages']:
-            self.addCmdWithOptionalParam(self.packageCmd, pkg)
-        self.before += '\n'
+            packageDef += self.splitCmd(self.packageCmd, pkg)
+        packageDef += '\n'
 
-        # Preamble commands
+        # Outer preamble commands
+        outerPreamble = ''
         for k in self.preambleCmds:
             if k in Config.effectiveConfig:
-                self.before += self.preambleCmds[k] % Config.effectiveConfig[k]
+                outerPreamble += self.preambleCmds[k] % Config.getRaw(k)
 
-        self.before += self.begin
+        # Inner preamble commands
+        innerPreamble = VerbatimEnv.preambleDefs
+        if Config.effectiveConfig.get('titlepage', 'no') in ['yes', 'y', 'true', True]:
+            innerPreamble += self.titlePageCmd
 
-        # Title slide, if required
-        if Config.effectiveConfig.get('titlepage', 'no') in ['yes', 'y', 'true']:
-            self.before += self.titlePageCmd
-        
-    def addCmdWithOptionalParam(self, cmdTemplate, content):
+        self.before = packageDef + outerPreamble + self.begin + innerPreamble
+
+    @staticmethod
+    def splitCmd(cmdTemplate, content):
         i = content.rfind(',')
         if i > -1:
-            self.before += cmdTemplate[0] % (content[:i], content[i+1:])
+            return cmdTemplate[0] % (content[:i], content[i+1:]) + '\n'
         else:
-            self.before += cmdTemplate[1] % content
-        self.before += '\n'
+            return cmdTemplate[1] % content + '\n'
 
 
 class Slide(Hierarchy):
@@ -91,6 +97,8 @@ class Slide(Hierarchy):
         headBegin = txt.find('[')
         headEnd = txt.find('\n', headBegin)
         headSplit = (txt.find(' ', headBegin) + 1) or headEnd # If there is a blank, title begins after it; otherwise stop at end of line and title will be the empty string.
+
+# TODO THERE IS A BUG HERE WHEN SLIDE OPEN JUST BY [ ALONE
 
         # Add breaks or shrink if applicable
         opts = txt[headBegin+1 : headSplit].strip()
@@ -109,20 +117,21 @@ class Slide(Hierarchy):
                 warn('Slide title: Invalid slide option:', opts)
                 opts = ''
 
-        super().__init__(slideParser.parse(txt[headEnd:-1], slideLexer),
+        super(Slide, self).__init__(slideParser.parse(txt[headEnd:-1], slideLexer),
                          self.before % (opts, txt[headSplit:headEnd]),
                          self.after)
 
         # Hierarchical children will have added themselves to the parsing queue which we process now
         while len(self.parsingQ) > 0:
             self.parsingQ.pop()()
-        
+
+
 class ListItem(Hierarchy):
-    
-    # Dang... \item<3-| alert@3>
+
     enumCounters = ['i', 'ii', 'iii', 'iv']
     enumCounterCmd = '\\setcounter{enum%s}{%d}\n'
-    
+    counterValues = [0,0,0,0]
+
     begins = ['\\begin{itemize}\n', '\\begin{enumerate}\n', '\\begin{description}\n']
     specs = ['', '<alert@+>', '<+->', '<+-|alert@+>']
     markers = [r'\item%s %s', r'\item%s %s', r'\item%s[%s] ']
@@ -137,25 +146,20 @@ class ListItem(Hierarchy):
             marker = txt[:i]
             describee = ''
             content = txt[i+1:]
-            
-            debug('Txt picked up by listitem:', txt)
-            
-            self.emph = 0
-            if marker.find('*') > -1:
-                self.emph = 1
-                
-            self.uncover = 0
-            if marker.find('+') > -1:
-                self.uncover = 2
-                
+
+            self.emph = 1 if marker.find('*') > -1 else 0
+            self.uncover = 2 if marker.find('+') > -1 else 0
+
             self.kind = 0 # Unordered list
+            self.resume = False
+
             if marker.find('.') > -1:
                 self.kind = 1 # Ordered list
     
             elif marker.find(',') > -1:
                 self.kind = 1 # Ordered list, resume numbering
-                # TODO code for resuming.. is it in resolve()?
-    
+                self.resume = True
+
             elif marker.find('=') > -1:
                 self.kind = 2 # Description list. Isolate describee
                 j = content.find('=')
@@ -170,30 +174,51 @@ class ListItem(Hierarchy):
                     content = content[j+1:]
             
             super(ListItem, self).__init__(slideParser.parse(content, slideLexer),
-                             self.markers[self.kind] % (self.specs[self.emph + self.uncover], describee),
-                             '\n')
-#             super(ListItem, self).__init__(slideParser.parse(content, slideLexer),
-#                             self.begins[self.kind] + self.markers[self.kind] % (self.specs[self.emph + self.uncover], describee), self.ends[self.kind])
-            
-            debug('ListItem children:', self.children)
-            
+                     '%s' + self.markers[self.kind] % (self.specs[self.emph + self.uncover], describee),
+                     '\n')
+
         Slide.parsingQ.insert(0, innerFunc)
     
     @classmethod
-    def resolve(cls, docList): 
+    def resolve(cls, docList, depth=0):
         maxIndex = len(docList) - 1
+
+        # Anti-stupid
+        if depth > 3:
+            warn('Nested lists to depth greater than 4')
+            depth = 3
+
         for i,l in enumerate(docList):
-            if isinstance(l, cls) and ( i == 0 or (docList[i-1].kind != l.kind if isinstance(docList[i-1], cls) else True)):
-                l.before = cls.begins[l.kind] + l.before
-            if isinstance(l, cls) and ( i == maxIndex or (docList[i+1].kind != l.kind if isinstance(docList[i+1], cls) else True)):
-                l.after += cls.ends[l.kind]
-             
-            if isinstance(l, Hierarchy):
-                cls.resolve(l.children)
-        
-        # TODO resume counters
-        
-        
+
+            # Deal with list items
+            if isinstance(l, cls):
+
+                # Begin list before current item if previous item doesn't exist, is not a list item, or is a list item of a different kind
+                if i == 0 or (docList[i-1].kind != l.kind if isinstance(docList[i-1], cls) else True):
+                    l.before = cls.begins[l.kind] + l.before
+
+                    # If this is an enumeration item which doesn't resume the counter, reset counter for current depth to 0
+                    if l.kind == 1 and not l.resume:
+                        cls.counterValues[depth] = 0
+
+                # End list after current item if next item doesn't exist, is not a list item, or is a list item of a different kind
+                if i == maxIndex or (docList[i+1].kind != l.kind if isinstance(docList[i+1], cls) else True):
+                    l.after += cls.ends[l.kind]
+
+                # Resume counters for enumerations that require it
+                l.before %= cls.enumCounterCmd % (cls.enumCounters[depth], cls.counterValues[depth]) if l.resume else ''
+
+                # Increment counter for current level if enumeration
+                if l.kind == 1:
+                    cls.counterValues[depth] += 1
+
+                # Recurse to children, which are now one level deeper
+                cls.resolve(l.children, depth+1)
+
+            # Deal with non-list hierarchies
+            elif isinstance(l, Hierarchy):
+                cls.resolve(l.children, depth)
+
 
 class Column(Hierarchy):
 
@@ -271,6 +296,7 @@ class Column(Hierarchy):
             if isinstance(elem, Hierarchy):
                 cls.resolve(elem.children)
 
+
 class Box(Hierarchy):
 
     # TODO anything config-able?
@@ -301,4 +327,34 @@ class Box(Hierarchy):
                                       self.begin % (kind, head),
                                       self.end % kind)
 
+        Slide.parsingQ.insert(0, innerFunc)
+
+
+class Emph(Hierarchy):
+    def __init__(self, flag, txt):
+        self.flag = flag
+        def innerFunc():
+            super(Emph, self).__init__(slideParser.parse(txt, slideLexer))
+        Slide.parsingQ.insert(0, innerFunc)
+
+    def __str__(self):
+        return Config.get('emph', self.flag)(super(Emph, self).__str__())
+
+
+class Stretch(Hierarchy):
+    def __init__(self, flag, txt=''):
+        self.flag = flag
+        def innerFunc():
+            super(Stretch, self).__init__(slideParser.parse(txt, slideLexer) if txt else [])
+        Slide.parsingQ.insert(0, innerFunc)
+
+    def __str__(self):
+        return Config.get('stretch', self.flag)(super(Stretch, self).__str__())
+
+
+class Footnote(Hierarchy):
+    def __init__(self, txt):
+        def innerFunc():
+            super(Footnote, self).__init__(slideParser.parse(txt, slideLexer),
+                                            r'\footnote[frame]{', '}')
         Slide.parsingQ.insert(0, innerFunc)

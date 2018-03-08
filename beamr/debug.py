@@ -3,6 +3,7 @@ Created on 13 Nov 2017
 
 @author: Teodor Gherasim Nistor
 '''
+from __future__ import print_function
 import sys
 
 file = sys.stderr

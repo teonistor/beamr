@@ -4,13 +4,14 @@ Created on 6 Feb 2018
 @author: Teodor Gherasim Nistor
 
 '''
+import os.path
+import re
+from beamr.lexers import imageLexer
+from beamr.parsers import imageParser
+from beamr.debug import debug, warn
 
-from pybeams.lexers import imageLexer
-from pybeams.parsers import imageParser
-from pybeams.debug import debug, warn
 
-
-class Text:
+class Text(object):
     
     def __init__(self, txt):
         self.txt = txt
@@ -25,62 +26,27 @@ class Text:
 class Comment(Text):
     def __init__(self, txt):
         debug('Comment ', txt)
-        super().__init__('% ' + txt)
+        super(Comment, self).__init__('% ' + txt)
 
 
 class Escape(Text):
     def __init__(self, txt):
-        super().__init__(txt[1:])
+        super(Escape, self).__init__(txt[1:])
 
 
-class Stretch(Text):
-
-    cmds = {
-        '<>': '\\centering\\noindent\\resizebox{0.9\\textwidth}{!}{%s}',
-        '><': '\\begin{center}\n%s\n\\end{center}',
-        '<<': '\\begin{flushleft}\n%s\n\\end{flushleft}',
-        '>>': '\\begin{flushright}\n%s\n\\end{flushright}',
-#         '^^': r'%s \vfill',
-#         'vv': r'\vfill %s',
-#         '^v': r'\vfill %s \vfill',
-#         'v^': r'\vfill %s \vfill' # TODO tilted text?
-    }
-    defaultCmd = '%s'
-
-    def __init__(self, txt):
-        flags = txt[1] + txt[-2]
-        txt = txt[2:-2]
-        super().__init__(self.cmds.get(flags, self.defaultCmd) % txt)
-
-
-class Emph(Text):
-    def __init__(self, txt):
-        # Eliminate asterisks and count how many they were
-        self.emphLevel = 0
-        while txt[0] == txt[-1] == '*':
-            self.emphLevel += 1
-            txt = txt[1:-1]
-
-        # Anti-stupid
-        if self.emphLevel > 4:
-            warn("Something's wrong with emphasis level ", self.emphLevel, ', resetting to 4')
-            self.emphLevel = 4
-
-        super().__init__(txt)
-
+class Citation(Text):
     def __str__(self):
-        from pybeams.interpreters.config import Config
-        return Config.effectiveConfig['emph'][self.emphLevel] % super().__str__()
-
-
-class Note(Text):
-    def __init__(self, txt):
-        super().__init__('Note '+txt) # TODO do this
+        from beamr.interpreters.config import Config
+        if Config.effectiveConfig['bib']:
+            return r'\cite{' + self.txt + '}'
+        else:
+            warn('Citations used but no bibliography file given.')
+            return ''
 
 
 class Url(Text):
     def __init__(self, txt):
-        super().__init__(r'\url{' + txt + '}')
+        super(Url, self).__init__(r'\url{' + txt + '}')
 
 
 class Heading(Text):
@@ -106,11 +72,12 @@ class Heading(Text):
             warn("Something's wrong with heading marker", marker, 'having index', i)
             i = 2
             
-        super().__init__(Heading.formats[i] % txt[0])
+        super(Heading, self).__init__(Heading.formats[i] % txt[0])
         debug('Heading level', i, marker, txt[0])
 
 
 class ImageEnv(Text):
+    # TODo cf \includepdf[pages=61,width=\paperwidth,height=\paperheight]{yourfile.pdf}
 
     markers = [r'\includegraphics[width=%.3f%s,height=%.3f%s]{%s}',
                r'\includegraphics[width=%.3f%s]{%s}',
@@ -124,7 +91,7 @@ class ImageEnv(Text):
 
         # Anti-stupid: Ignore an empty environment
         except:
-            super().__init__('')
+            super(ImageEnv, self).__init__('')
             return
 
         def singleImage(dims, files=None, file=None, implicitDims=r'width=\textwidth'):
@@ -168,7 +135,7 @@ class ImageEnv(Text):
             for line in files:
                 for file in line:
                     s += singleImage(dims, file=file)
-                s += '\\\\\n'
+                s += r'\\'
             return s
 
         def smartGrid(dims, files, implicitFillWidth=True):
@@ -180,7 +147,7 @@ class ImageEnv(Text):
                   '+': grid,
                   '#': smartGrid}
 
-        super().__init__(shapes.get(shape, singleImage)(dims, files))
+        super(ImageEnv, self).__init__(shapes.get(shape, singleImage)(dims, files))
 
 
 class PlusEnv(Text):
@@ -188,7 +155,7 @@ class PlusEnv(Text):
     def __init__(self, txt):
         # TODO
         warn('Plus integration not yet implemented')
-        super().__init__( 'Plus: ' + txt)
+        super(PlusEnv, self).__init__( 'Plus: ' + txt)
 
 
 class TableEnv(Text):
@@ -196,20 +163,90 @@ class TableEnv(Text):
     def __init__(self, txt):
         # TODO
         warn('Tables not yet implemented')
-        super().__init__( 'Table: ' + txt )
+        super(TableEnv, self).__init__( 'Table: ' + txt )
 
 
 class ScissorEnv(Text):
 
+    includeCmd = r'{\setbeamercolor{background canvas}{bg=}\includepdf%s{%%s}}'
+    pagesSpec = '[pages={%s}]'
+
     def __init__(self, txt):
-        # TODO
-        warn('Document concatenation not yet implemented')
-        super().__init__( '8< ' + txt)
+        super(ScissorEnv, self).__init__(self._init_helper(txt.strip().split()) + '\n')
+
+    def _init_helper(self, arr):
+        if len(arr) == 0:
+            warn('Skipping empty scissor command')
+            return ''
+
+        if not (os.path.isfile(arr[0]) or os.path.isfile(arr[0] + '.pdf')):
+            # TODO Link to safety net
+            # if .safe:
+            #     warn('File included in scissor command not found, omitting')
+            #     return ''
+            # else:
+            warn('File included in scissor command not found, proceeding unsafely...')
+
+        if len(arr) > 1:
+            if re.fullmatch(r'\d+(-\d+)?(,\d+(-\d+)?)*', arr[1]):
+                cmd = self.includeCmd % self.pagesSpec
+                return cmd % (arr[1], arr[0])
+            else:
+                warn('Ignoring malformed page range in scissor command')
+            if len(arr) > 2:
+                warn('Ignoring extraneous arguments in scissor command')
+
+        cmd = self.includeCmd % ''
+        return cmd % arr[0]
 
 
 class VerbatimEnv(Text):
     
-    def __init__(self, txt):
+    count=0
+    todo = []
+    preambleDefs = ''
+
+    def __init__(self, head, body):
+        self.__class__.count += 1
+        self.__class__.todo.append(self)
+
+        # Document.classResulutionSet.add(__class__)
         # TODO
-        warn('Verbatim environment not yet implemented')
-        super().__init__( '[Verbatim env omitted]')
+
+        # We can use Config here as this part of the dict is not supposed to ever change
+        from beamr.interpreters import Config
+        lettr = ''
+        num = self.__class__.count
+        while num:
+            lettr += chr(64 + num%27)
+            num //= 27
+        self.insertCmd = Config.get('vbtmCmds', 'insertion')(lettr)
+        self.head = head
+        self.body = body
+        super(VerbatimEnv, self).__init__(self.insertCmd)
+
+    @classmethod
+    def resolve(cls):
+        if cls.count:
+
+            # Ensure proper package name is given
+            from beamr.interpreters import Config
+            package = Config.getRaw('verbatim')
+            packageList = Config.getRaw('vbtmCmds', 'packageNames')
+            if package not in packageList:
+                package = packageList[0]
+                Config.effectiveConfig['verbatim'] = package
+            Config.effectiveConfig['packages'].append(package)
+
+            cls.preambleDefs = Config.getRaw('vbtmCmds', 'once', package) + '\n'
+
+            for f in cls.todo:
+                if f.head:
+                    cls.preambleDefs += Config.getRaw('vbtmCmds', 'foreach', package) % (
+                             f.insertCmd,
+                             f.head,
+                             f.body)
+                else:
+                    cls.preambleDefs += Config.getRaw('vbtmCmds', 'foreachNoLang', package) % (
+                             f.insertCmd,
+                             f.body)

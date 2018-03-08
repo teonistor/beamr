@@ -5,9 +5,8 @@ Created on 15 Feb 2018
 '''
 from ply import lex
 
-import pybeams.debug as dbg
-# from pybeams.lexers.document import t_COMMENT  # @UnusedImport
-from pybeams.lexers.generic import t_error  # @UnusedImport
+import beamr.debug as dbg
+from beamr.lexers.generic import t_error  # @UnusedImport
 
 
 tokens = (

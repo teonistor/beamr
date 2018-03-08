@@ -3,10 +3,10 @@ Created on 1 Feb 2018
 
 @author: Teodor Gherasim Nistor
 '''
-import pybeams.debug as debug
-from pybeams.parsers.generic import p_nil, p_error  # Used internally by yacc() @UnusedImport
+import beamr.debug as debug
+from beamr.parsers.generic import p_nil, p_error  # Used internally by yacc() @UnusedImport
 from ply import yacc
-from pybeams.lexers.slide import tokens  # Used internally by yacc() @UnusedImport
+from beamr.lexers.slide import tokens  # Used internally by yacc() @UnusedImport
 
 start = 'main'
 
@@ -22,19 +22,21 @@ def p_main(t):
 def p_elem(t):
     '''elem : COMMENT
             | ESCAPE
-            | STRETCH
+            | STRETCH1
+            | STRETCH2
             | EMPH
-            | NOTE
+            | CITATION
+            | FOOTNOTE
             | URL
             | LISTITEM
             | COLUMN
             | IMGENV
             | PLUSENV
             | TABENV
-            | SCIENV
             | VERBATIM
             | MACRO
             | BOX
+            | ANTIESCAPE
             | TEXT'''
     t[0] = t[1]
 
