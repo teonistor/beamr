@@ -12,18 +12,24 @@ Please note: the language, its interpreter, as well as this very page, are curre
 
 ## Installation
 
-Simplest way, install from PyPI: `pip install beamr`
+Simplest way, install from PyPI using Pip:
+```
+ pip install beamr
+```
+This will give you access to the `beamr` executable. If `beamr` is not immediately recognised, consult [this Pip issue](https://github.com/pypa/pip/issues/3813) or run the package explicitly: `python -m beamr`.
 
-This will give you access to the `beamr` executable. Alternatively, [download a copy from Github](https://github.com/teonistor/beamr/zipball/master) and run the package locally: `python -m beamr` (with the various caveats of doing so, circumventable by setting shell aliases, paths etc)
+If installing system-wide (with `sudo`) you may see some warnings about file access permissions (`Errno 13`) when running `beamr` subsequently. They are inoffensive, but you can get rid of them by running the program with `sudo` once, allowing a certain module to fix itself persistently.
+
+Alternatively, [download a copy from Github](https://github.com/teonistor/beamr/zipball/master) and run the package locally: `python -m beamr` (with the various caveats of doing so, circumventable by setting shell aliases, paths etc)
 
 ## Dependencies
 
-The interpreter runs on Python 2.7 and 3.4 onwards. It has been most heavily tested on 3.4 and 3.6 therefore bugs are more likely on 2.7 (and please use the most up-to-date version anyway).
+The interpreter runs on Python 2.7 and 3.4 onwards. It has been tested the most on 3.4 and 3.6 therefore bugs are more likely on 2.7 (and please use the most up-to-date version anyway).
 
 The following Python packages are mandatory and will be added automatically when installing using Pip:
-- `ply`
-- `pyaml`
-- `docopt`
+- `ply` 3.11 or newer
+- `pyaml` 17.12 or newer
+- `docopt` 0.6 or newer
 
 The intended use of the program requires `pdflatex` to be called internally; for this a number of `texlive` packages are required and can be installed from the system package manager, e.g.:
 ```
@@ -34,8 +40,8 @@ The intended use of the program requires `pdflatex` to be called internally; for
 However if you plan to simply generate LaTeX sources to use in an external engine (e.g. Sharelatex) you can do so without having texlive installed at all.
 
 Optional dependencies:
-- `PIL` package for certain more advanced image arrangement features
-- `pygmentize` executable for code listings using the *minted* environment
+- `PIL` package for certain more advanced image arrangement features (installable from Pip)
+- `pygmentize` executable for code listings using the *minted* environment (installable from your system package manager)
 
 
 ## Configuration
@@ -309,7 +315,9 @@ At the outmost level of an input file reside 4 types of elements:
         file3 file4 #}
     ```
 
-1. Verbatim text (coming soon) - in 2 or 3 flavours: verbatim, listings, minted.
+1. **Verbatim text** in 2 flavours: listings, minted.
+
+1. Raw LaTex
 
 1. **Special characters and escaping**. Special characters will generally go through unaltered, unless they form part of structures described here. Any character can be escaped by adding a backslash (`\`) before it. Lone `%` and `&` characters will be escaped when going into LaTeX because they tend to cause a lot of trouble.
 
