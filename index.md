@@ -84,11 +84,11 @@ At the outmost level of an input file reside 4 types of elements:
 1. **Slides** are delimited by opening and closing square brackets, placed at the very beginning of lines of text (with no white space). An optional slide title can be given after the opening bracket.
 
     Example:
-    ```
-     [ Overview
-      In this presentation we will be talking about this and that.
-     ]
-    ```
+```
+[ Overview
+ In this presentation we will be talking about this and that.
+]
+```
     
     Shrink (`.<number>`) or break (`...`) options can be specified immediately after the opening square bracket; these are useful when a slide has too much content to fit in under default settings.
 
