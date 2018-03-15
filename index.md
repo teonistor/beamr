@@ -341,7 +341,7 @@ At the outmost level of an input file reside 4 types of elements:
 
 1. **Verbatim text** for code listings in 2 flavours: listings, minted. Choose minted in the config if you have `pygmentize` installed (otherwise `pdflatex` will fail).
     ```
-   {{c++
+   {{ "{" }}{c++ 
     #include<bar>
     int main() {
       printf("is wider\n");
