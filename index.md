@@ -32,9 +32,9 @@ The following Python packages are mandatory and will be added automatically when
 - `docopt` 0.6 or newer
 
 The intended use of the program requires `pdflatex` to be called internally; for this a number of `texlive` packages are required and can be installed from the system package manager, e.g.:
-```
- apt install texlive-generic-recommended texlive-fonts-recommended texlive-font-utils texlive-extra-utils texlive-latex-base
-```
+
+    apt install texlive-latex-base texlive-generic-recommended texlive-fonts-recommended texlive-font-utils texlive-extra-utils cm-super
+
 (These are the packages I have installed on my system and it works. Perhaps not all of them are needed.)
 
 However if you plan to simply generate LaTeX sources to use in an external engine (e.g. Sharelatex) you can do so without having texlive installed at all.
