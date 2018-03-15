@@ -46,9 +46,9 @@ The following Python packages are mandatory and will be added automatically when
 - `docopt` 0.6 or newer
 
 The intended use of the program requires `pdflatex` to be called internally; for this a number of `texlive` packages are required and can be installed from the system package manager, e.g.:
-```
- apt install texlive-generic-recommended texlive-fonts-recommended texlive-font-utils texlive-extra-utils texlive-latex-base
-```
+
+    apt install texlive-generic-recommended texlive-fonts-recommended texlive-font-utils texlive-extra-utils texlive-latex-base
+
 (These are the packages I have installed on my system and it works. Perhaps not all of them are needed.)
 
 However if you plan to simply generate LaTeX sources to use in an external engine (e.g. Sharelatex) you can do so without having texlive installed at all.
@@ -113,45 +113,48 @@ At the outmost level of an input file reside 4 types of elements:
     Shrink (`.<number>`) or break (`...`) options can be specified immediately after the opening square bracket; these are useful when a slide has too much content to fit in under default settings.
 
     Examples:
-    ```
-     [... Long slide
-      If this text is too long, it will be split across multiple slides.
-     ]
-     [.20
-      This slide has no title, but its text will be 20% smaller than usual.
-     ]
-    ```
+```
+[... Long slide
+If this text is too long, it will be split across multiple slides.
+]
+[.20
+This slide has no title, but its text will be 20% smaller than usual.
+]
+[.
+This slide has no title, but its text will be automatically shrinked to fit if it's too large.
+]
+```
 
 1. **Headings** are given outside by following a line of text with a streak of one of the symbols `- _ = ~` repeated at least 4 times. Headings should be surrounded by a visibly empty line before and after. The symbols will be understood to define sections, subsections, and subsubsections in the order in which they are encountered. 
 
     Example:
     ```
-      Introduction
-      ----
-      
-      Section about animals
-      ----
-      
-      Subsection about cats
-      ~~~~
+   Introduction
+   ----
+
+   Section about animals
+   ----
+
+   Subsection about cats
+   ~~~~
     ```
 
 1. **Configuration** can be given in the form of Yaml blocks surrounded by `---` and `...`.
 
     Example:
     ```
-     ---
-     theme: Berkeley
-     scheme: beetle
-     ...
+   ---
+   theme: Berkeley
+   scheme: beetle
+   ...
     ```
 
 1. **Document concatenation**. Pages can be added from another document by giving its name and page ranges in the *scissors* construct:
     ```
-    8<{otherdoc.pdf 2-5,7,10}
-    
-    # The scissors can go both ways, e.g.:
-    >8{yetanotherdoc.pdf 7-9,14}
+   8<{otherdoc.pdf 2-5,7,10}
+
+   # The scissors can go both ways, e.g.:
+   >8{yetanotherdoc.pdf 7-9,14}
     ```
 
 1. Any other text which does not fall into these categories is ignored (in the future there will be options to add notes to slides and export handouts with those notes separately from the plain slide show).
@@ -163,61 +166,61 @@ At the outmost level of an input file reside 4 types of elements:
 
     Example:
     ```
-    This is a paragraph.
+   This is a paragraph.
 
-    This is another paragraph.
+   This is another paragraph.
     ```
 
 1. **Text highlighting** is achieved by surrounding the highlighted text in one or two of the symbols `_ * ~`. 
 
     Example:
     ```
-    _Italicised text_
-    *Bold text*
-    ~Struck out text~
-    __Underlined text__
-    **Alerted text** (coloured in red by default)
+   _Italicised text_
+   *Bold text*
+   ~Struck out text~
+   __Underlined text__
+   **Alerted text** (coloured in red by default)
     ```
 
 1. **URLs** can be made clickable by surrounding them in square brackets; they should be on a single line.
 
     Example:
     ```
-    [https://www.example.com/]
+   [https://www.example.com/]
     ```
 
 1. **Text stretching, alignment, and other square-bracket constructs**:
     ```
-    [>Right-aligned text>]
+   [>Right-aligned text>]
 
-    [>Centred text<]
+   [>Centred text<]
 
-    [<Left-aligned text (redundant by default, but relevant if justification to both sides set)<]
+   [<Left-aligned text (redundant by default, but relevant if justification to both sides set)<]
 
-    [<Text stretched across whole slide width>]
+   [<Text stretched across whole slide width>]
 
-    [^1em^] Push this text up by 1 em (use negative numbers to push down)
+   [^1em^] Push this text up by 1 em (use negative numbers to push down)
 
-    [.Footnote sized text.]
+   [.Footnote sized text.]
 
-    [+] Insert a pause (text after this will appear on the next frame of the slide)
+   [+] Insert a pause (text after this will appear on the next frame of the slide)
 
-    [>] Insert a horizontal filler
+   [>] Insert a horizontal filler
 
-    [:] Insert a fixed vertical space
+   [:] Insert a fixed vertical space
     ```
     
     You can customize sequences of up to 3 of the symbols above to perform commands of your choice in your configuration. Always remember to use the `%s` placeholder where text will be inserted.
 
 1. **Footnotes, citations**:
     ```
-    This presentation is very interesting[-As I mentioned in my previous presentation-].
+   This presentation is very interesting[-As I mentioned in my previous presentation-].
 
-    This footnote[-24:Very interesting-] has a label, which I can now use to refer to it again[-24:-].
+   This footnote[-24:Very interesting-] has a label, which I can now use to refer to it again[-24:-].
 
-    If you need a colon in the footnote text you can give it an empty label[-:Meet at 15:30-].
+   If you need a colon in the footnote text you can give it an empty label[-:Meet at 15:30-].
 
-    $E=mc^2$[--einstein]
+   $E=mc^2$[--einstein]
     ```
     
     Note that for historical reasons, in order for citations to work you must create a bibliography file and specify at some point in the configuration (e.g. `bib: filename`); then you must compile the bibliography file using `bibtex` and run LaTeX (directly or implicitly through Beamr) twice for all references to settle. Similarly, re-referenced footnotes will need two runs of `pdflatex` to be fully resolved.
@@ -226,25 +229,25 @@ At the outmost level of an input file reside 4 types of elements:
 
     Examples:
     ```
-    [
-    Text before the columns
+   [
+   Text before the columns
 
-    |30%
-      This is a narrow column on the left
+   |30%
+     This is a narrow column on the left
 
-    |
-      This is a wide column on the right
+   |
+     This is a wide column on the right
  
-    Text after the columns
-    ]
+   Text after the columns
+   ]
 
-    [
-    |1
-      First column
+   [
+   |1
+     First column
 
-    |4
-      Second column, which is 4 times as wide as the first
-    ]
+   |4
+     Second column, which is 4 times as wide as the first
+   ]
     ```
 
 1. **Lists** are created using list item markers which are composed of a few characters:
@@ -256,47 +259,47 @@ At the outmost level of an input file reside 4 types of elements:
 
     Examples:
     ```
-    [
-    Ordinary bullet list:
+   [
+   Ordinary bullet list:
 
-    - bullet
-    - bullet
-    - more bullet
-    ]
+   - bullet
+   - bullet
+   - more bullet
+   ]
 
-    [
-    Numbered list on a few levels, each item telling you what it will be numbered:
+   [
+   Numbered list on a few levels, each item telling you what it will be numbered:
 
-    -. one
-    -, two
-      -, one
-      -. two
-        -. one
-    -. three
-      -, three
-      -, four
-    -. four
-    -, five
-      -. one
-    -. six
-      -. one
-    ]
+   -. one
+   -, two
+     -, one
+     -. two
+       -. one
+   -. three
+     -, three
+     -, four
+   -. four
+   -, five
+     -. one
+   -. six
+     -. one
+   ]
 
-    [
-    Description list:
+   [
+   Description list:
 
-    -=Apple=a fruit
-    -=Fruit with long name=another fruit
-    -=Potato vegetable
-    ]
+   -=Apple=a fruit
+   -=Fruit with long name=another fruit
+   -=Potato vegetable
+   ]
 
-    [
-    List where items will be revealed one by one and highlighted when they appear:
+   [
+   List where items will be revealed one by one and highlighted when they appear:
 
-    *+ one
-    *+ more
-    *+ time
-    ]
+   *+ one
+   *+ more
+   *+ time
+   ]
     ```
 
 1. **Boxes** are created using round brackets and one of the symbols `*`, `!`. The box title follows this symbol on the same line. The contents follow on subsequent lines, indented relative to the opening bracket. The closing bracket must be on its own line and on the same level of indentation as the opening one.
@@ -309,7 +312,7 @@ At the outmost level of an input file reside 4 types of elements:
         We can have columns inside the box
       |45%
         (although we need to make them narrower)
-    )
+   )
 
     (! Alert box
       Box contents...
@@ -322,21 +325,21 @@ At the outmost level of an input file reside 4 types of elements:
 
     Examples:
     ```
-    One image, half-width:
-    ~{file 50%}
+   One image, half-width:
+   ~{file 50%}
 
-    One image, 10 cm wide by 2 em tall:
-    ~{file 10cmx2em}
+   One image, 10 cm wide by 2 em tall:
+   ~{file 10cmx2em}
 
-    A vertical strip of 3 images (by default being as tall as the slide:
-    ~{file1 file2 file3 |}
+   A vertical strip of 3 images (by default being as tall as the slide:
+   ~{file1 file2 file3 |}
 
-    A horizontal strip of 4 images, 15 cm wide:
-    ~{file1 file2 file3 file4 - 15cm}
+   A horizontal strip of 4 images, 15 cm wide:
+   ~{file1 file2 file3 file4 - 15cm}
 
-    A grid of 4 images:
-    ~{file1 file2
-      file3 file4 +}
+   A grid of 4 images:
+   ~{file1 file2
+     file3 file4 +}
     ```
 
 1. **Verbatim text** for code listings in 2 flavours: listings, minted. Choose minted in the config if you have `pygmentize` installed (otherwise `pdflatex` will fail).
