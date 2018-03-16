@@ -109,7 +109,9 @@ At the outmost level of an input file reside 4 types of elements:
  In this presentation we will be talking about this and that.
 ]
 ```
-    
+
+   ![Overview example](snapshot/snapshot1.png)
+
     Shrink (`.<number>`) or break (`...`) options can be specified immediately after the opening square bracket; these are useful when a slide has too much content to fit in under default settings.
 
     Examples:
