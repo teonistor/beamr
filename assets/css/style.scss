@@ -32,3 +32,12 @@ p {
 	width: 95%;
 	max-width: 1250px;
 }
+
+code {
+	background-color: #002;
+	color: inherit;
+}
+
+pre code {
+	white-space: pre;
+}
