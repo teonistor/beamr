@@ -100,4 +100,4 @@ def _optional_format(a, b):
     else:
         return (a[0], a[1])
 
-parser = yacc.yacc(tabmodule='image_parsetab', debugfile='image_parsedbg', debug=not debug.quiet)
+parser = yacc.yacc(tabmodule='image_parsetab', debugfile='image_parsedbg', debug=debug.quiet<2)

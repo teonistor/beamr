@@ -6,5 +6,5 @@ Created on 1 Feb 2018
 from beamr.debug import warn
 
 def t_error(t):
-    warn ('Skip lexing error..', t)
+    warn ('Skip lexing error..', t, 'at line', t.lexer.lineno)
     t.lexer.skip(1)

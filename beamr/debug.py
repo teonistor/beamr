@@ -6,17 +6,27 @@ Created on 13 Nov 2017
 from __future__ import print_function
 import sys
 
-file = sys.stderr
-verbose = False
-quiet = False
+verbose = 0
+quiet = 0
+infname = '<stdin>'
 
-def debug(*arg):
+def debug(*arg, **kw):
     if verbose:
-        print('DBG:', *arg, file=file)
+        _print(arg, kw, 'DBG')
 
-def warn(*arg):
-    if not quiet:
-        print('WARN:', *arg, file=file)
+def warn(*arg, **kw):
+    if quiet < 2:
+        _print(arg, kw, 'WARN')
 
-def err(*arg):
-    print('ERR:', *arg, file=file)
+def err(*arg, **kw):
+    if quiet < 3:
+        _print(arg, kw, 'ERR')
+
+def _print(arg, kw, pre=''):
+    kw['file'] = sys.stderr
+    if 'range' in kw:
+        pre = '%s:%s: %s:' % (infname, kw['range'], pre)
+        del kw['range']
+    else:
+        pre = '%s: %s:' % (infname, pre)
+    print(pre, *arg, **kw)

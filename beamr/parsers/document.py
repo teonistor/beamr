@@ -12,6 +12,7 @@ start = 'main'
 
 def p_main_notext(t):
     '''main : main COMMENT
+            | main RAW
             | main HEADING
             | main SLIDE
             | main SCISSOR
@@ -27,4 +28,4 @@ def p_main_text(t):
     '''main : main TEXT'''
     t[0] = t[1]
 
-parser = yacc.yacc(tabmodule='document_parsetab', debugfile='document_parsedbg', debug=not debug.quiet)
+parser = yacc.yacc(tabmodule='document_parsetab', debugfile='document_parsedbg', debug=debug.quiet<2)

@@ -20,31 +20,32 @@ def main():
     halp = '''%s - %s
 
     Usage:
-        %s [-n|-p <cmd>] [-q|-v] [-u|-s] [-c <cfg>] [--] [- | <input-file>] [- | <output-file>]
-        %s (-h|-e [<editor>]) [-v]
+        %s [-n|-p <cmd>] [-v|-q...] [-u|-s] [-c <cfg>] [--] [- | <input-file>] [- | <output-file>]
+        %s (-h|-e [<editor> -d]) [-v]
         %s --version
 
     Options:
         -p <cmd>, --pdflatex=<cmd>  Specify pdflatex executable name and/or path to [default: pdflatex]
         -c <cfg>, --config=<cfg>    Override configuration. <cfg> must be valid Yaml
         -e, --edit-config     Open user configuration file for editing. An editor must be specified if configuration doesn't exist or doesn't mention one
+        -d, --dump-config     Open user configuration file as above, but first add the default config at the bottom of it (will help the user see what is available for editing)
         -n, --no-pdf   Don't create PDF output file (just generate Latex source)
         -u, --unsafe   Trust certain user input which cannot be verified
         -s, --safe     Don't trust user input which cannot be verified
-        -v, --verbose  Print inner workings of the lexer-parser-interpreter cycle to stderr
-        -q, --quiet    Print nothing except errors to stderr. If using Python >=3.6 this will also mute output from pdflatex
+        -v, --verbose  Print inner workings of the lexer-parser-interpreter cycle and other debugging info to stderr
+        -q, --quiet    Once: mute pdflatex. Twice: also mute warnings. 3 ore more times: mute everything.
         -h, --help     Show this message and exit.
         --version      Print version information
 ''' % (setup_arg['name'], setup_arg['description'], cli_name, cli_name, cli_name)
 
     # Parse arguments nicely with docopt
-    arg = docopt(halp,  version=setup_arg['version'])
+    arg = docopt(halp,  version='Beamr version ' + setup_arg['version'])
 
     # Set logging level
     if arg['--verbose']:
-        debug.verbose = True
+        debug.verbose = 1
     if arg['--quiet']:
-        debug.quiet = True
+        debug.quiet = arg['--quiet']
 
     # Docopt arguments themselves need debugging sometimes...
     debug.debug('args:', str(arg).replace('\n', ''))
@@ -52,7 +53,7 @@ def main():
     # If configuration editing mode, delegate to Config
     from beamr.interpreters.config import Config
     if arg['--edit-config']:
-        return Config.editUserConfig(arg['<editor>'])
+        return Config.editUserConfig(arg['<editor>'], arg['--dump-config'])
 
     # Establish pdflatex command and parameters if required
     pdflatex = None
@@ -68,6 +69,7 @@ def main():
 
     # Open I/O files where relevant
     if arg['<input-file>']:
+        debug.infname = arg['<input-file>']
         sys.stdin = open(arg['<input-file>'], 'r')
     if arg['<output-file>']:
         sys.stdout = open(arg['<output-file>'], 'w')

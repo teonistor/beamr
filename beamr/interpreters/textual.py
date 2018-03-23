@@ -6,7 +6,7 @@ Created on 6 Feb 2018
 '''
 import os.path
 import re
-from beamr.lexers import imageLexer
+from beamr.lexers import docLexer, imageLexer, slideLexer
 from beamr.parsers import imageParser
 from beamr.debug import debug, warn
 
@@ -25,41 +25,59 @@ class Text(object):
 
 class Comment(Text):
     def __init__(self, txt):
-        debug('Comment ', txt)
-        super(Comment, self).__init__('% ' + txt)
+        debug('Comment ', txt, range=slideLexer.lineno)
+        from beamr.interpreters import Config
+        super(Comment, self).__init__(Config.get('~comment')(txt))
 
 
 class Escape(Text):
     def __init__(self, txt):
+        debug('Escape', txt, range=slideLexer.lineno)
         super(Escape, self).__init__(txt[1:])
 
 
-class Citation(Text):
+class Antiescape(Text):
     def __str__(self):
         from beamr.interpreters.config import Config
-        if Config.effectiveConfig['bib']:
-            return r'\cite{' + self.txt + '}'
+        if self.txt in Config.getRaw('antiescape'):
+            return '\\' + self.txt
         else:
-            warn('Citations used but no bibliography file given.')
+            return self.txt
+
+
+class Citation(Text):
+    def __init__(self, txt, opts):
+        self.txt = txt
+        self.opts = opts
+        self.lineno = slideLexer.lineno
+
+    def __str__(self):
+        from beamr.interpreters.config import Config
+        if Config.getRaw('bib'):
+            if self.opts:
+                return Config.get('~citeOpts')((self.opts, self.txt))
+            else:
+                return Config.get('~citeSimple')(self.txt)
+        else:
+            warn('Citations used but no bibliography file given! Skipping.', range=self.lineno)
             return ''
 
 
 class Url(Text):
-    def __init__(self, txt):
-        super(Url, self).__init__(r'\url{' + txt + '}')
+    def __str__(self):
+        from beamr.interpreters.config import Config
+        return Config.get('~url')(self.txt)
 
 
 class Heading(Text):
     usedMarkers = []
-    formats = [
-#         '\\chapter{ %s }\n', # Invalid?
-        '\\section{ %s }\n',
-        '\\subsection{ %s }\n',
-        '\\subsubsection{ %s }\n'
-        ]
-    
+
     def __init__(self, txt):
-        txt = txt.strip().splitlines()
+        super(Heading, self).__init__(txt)
+        self.lineno = docLexer.lineno
+
+    def __str__(self):
+        txt = self.txt.strip().splitlines()
         marker = txt[1][0]
         
         try:
@@ -69,11 +87,12 @@ class Heading(Text):
             Heading.usedMarkers.append(marker)
 
         if i > 2: # Anti-stupid
-            warn("Something's wrong with heading marker", marker, 'having index', i)
+            warn("Something's wrong with heading marker", marker, 'having index', i, range=self.lineno)
             i = 2
             
-        super(Heading, self).__init__(Heading.formats[i] % txt[0])
-        debug('Heading level', i, marker, txt[0])
+        from beamr.interpreters.config import Config
+        debug('Heading level', i, marker, txt[0], range=self.lineno)
+        return Config.get('~heading', i)(txt[0])
 
 
 class ImageEnv(Text):
@@ -86,6 +105,7 @@ class ImageEnv(Text):
 
     def __init__(self, txt):
         try:
+            imageLexer.lineno=slideLexer.lineno
             files, shape, align, dims = imageParser.parse(txt[2:-1].strip(), imageLexer)
             debug(files, shape, align, dims)
 
@@ -139,7 +159,7 @@ class ImageEnv(Text):
             return s
 
         def smartGrid(dims, files, implicitFillWidth=True):
-            warn('Image Frame: PIL support not yet implemented, falling back to basic grid. Some images may be distorted.')
+            warn('Image Frame: PIL support not yet implemented, falling back to basic grid. Some images may be distorted.', range=slideLexer.lineno)
             return grid(dims, files, implicitFillWidth)
 
         shapes = {'|': vStrip,
@@ -148,56 +168,85 @@ class ImageEnv(Text):
                   '#': smartGrid}
 
         super(ImageEnv, self).__init__(shapes.get(shape, singleImage)(dims, files))
+        slideLexer.lineno = slideLexer.nextlineno
 
 
 class PlusEnv(Text):
 
     def __init__(self, txt):
         # TODO
-        warn('Plus integration not yet implemented')
+        warn('Plus integration not yet implemented', slideLexer.lineno+1)
         super(PlusEnv, self).__init__( 'Plus: ' + txt)
+        slideLexer.lineno = slideLexer.nextlineno
 
 
 class TableEnv(Text):
-    
+
+    begin = r'\begin{center}\begin{tabular}{%s}'
+    beginX = r'\begin{tabularx}{\textwidth}{%s}'
+    end = r'\end{tabular}\end{center}'
+    endX = r'\end{tabularx}'
+    hBar = '\n\\hline'
+
     def __init__(self, txt):
         # TODO
-        warn('Tables not yet implemented')
-        super(TableEnv, self).__init__( 'Table: ' + txt )
+        self.remember([])
+        slideLexer.lineno = slideLexer.nextlineno
+
+    def remember(self, arr, aligns='', vBars='', hBars=None):
+        self.arr = arr
+        maxWidth = max(map(lambda a: len(a), arr))
+        self.aligns = aligns or 'c' * maxWidth
+        self.vBars = vBars or ' ' + '|' * (maxWidth-1) + ' '
+        self.hBars = hBars or range(1, len(arr))
+
+    def __str__(self):
+        aligns = ''.join([self.vBars[i] + self.aligns[i] for i in range(len(self.aligns))]) + self.vBars[-1]
+        debug('Aligns:', aligns, 'done')
+
+        s = (self.begin if aligns.find('X') == -1 else self.beginX) % aligns
+        for i in range(len(self.arr)):
+            if i in self.hBars:
+                s += self.hBar
+            s += '\n' + ' & '.join(map(lambda a: str(a), self.arr[i])) + r' \\'
+        if len(self.arr) in self.hBars:
+            s += self.hBar
+        s += (self.end if aligns.find('X') == -1 else self.endX) + '\n'
+        return s
 
 
 class ScissorEnv(Text):
 
-    includeCmd = r'{\setbeamercolor{background canvas}{bg=}\includepdf%s{%%s}}'
-    pagesSpec = '[pages={%s}]'
-
     def __init__(self, txt):
-        super(ScissorEnv, self).__init__(self._init_helper(txt.strip().split()) + '\n')
+        super(ScissorEnv, self).__init__(txt)
+        self.lineno = docLexer.lineno
 
-    def _init_helper(self, arr):
-        if len(arr) == 0:
-            warn('Skipping empty scissor command')
+    def __str__(self):
+        arr = self.txt.strip().split()
+        if not len(arr):
+            warn('Empty 8< command, omitting', range=self.lineno)
             return ''
 
+        from beamr.interpreters.config import Config
+
         if not (os.path.isfile(arr[0]) or os.path.isfile(arr[0] + '.pdf')):
-            # TODO Link to safety net
-            # if .safe:
-            #     warn('File included in scissor command not found, omitting')
-            #     return ''
-            # else:
-            warn('File included in scissor command not found, proceeding unsafely...')
+            if Config.getRaw('safe'):
+                warn('File for 8< not found, omitting', range=self.lineno)
+                return ''
+            else:
+                warn('File for 8< not found, proceeding unsafely', range=self.lineno)
 
         if len(arr) > 1:
-            if re.fullmatch(r'\d+(-\d+)?(,\d+(-\d+)?)*', arr[1]):
-                cmd = self.includeCmd % self.pagesSpec
-                return cmd % (arr[1], arr[0])
-            else:
-                warn('Ignoring malformed page range in scissor command')
             if len(arr) > 2:
-                warn('Ignoring extraneous arguments in scissor command')
+                warn('Ignoring extraneous arguments in 8<', range=self.lineno)
 
-        cmd = self.includeCmd % ''
-        return cmd % arr[0]
+            if re.fullmatch(r'\d+(-\d+)?(,\d+(-\d+)?)*', arr[1]):
+                return Config.get('~scissorPages')((arr[1], arr[0]))
+
+            else:
+                warn('Ignoring malformed page range in 8<', range=self.lineno)
+
+        return Config.get('~scissorSimple')(arr[0])
 
 
 class VerbatimEnv(Text):
@@ -220,7 +269,7 @@ class VerbatimEnv(Text):
         while num:
             lettr += chr(64 + num%27)
             num //= 27
-        self.insertCmd = Config.get('vbtmCmds', 'insertion')(lettr)
+        self.insertCmd = Config.get('~vbtmCmds', 'insertion')(lettr)
         self.head = head
         self.body = body
         super(VerbatimEnv, self).__init__(self.insertCmd)
@@ -232,21 +281,21 @@ class VerbatimEnv(Text):
             # Ensure proper package name is given
             from beamr.interpreters import Config
             package = Config.getRaw('verbatim')
-            packageList = Config.getRaw('vbtmCmds', 'packageNames')
+            packageList = Config.getRaw('~vbtmCmds', 'packageNames')
             if package not in packageList:
                 package = packageList[0]
                 Config.effectiveConfig['verbatim'] = package
             Config.effectiveConfig['packages'].append(package)
 
-            cls.preambleDefs = Config.getRaw('vbtmCmds', 'once', package) + '\n'
+            cls.preambleDefs = Config.getRaw('~vbtmCmds', 'once', package) + '\n'
 
             for f in cls.todo:
                 if f.head:
-                    cls.preambleDefs += Config.getRaw('vbtmCmds', 'foreach', package) % (
+                    cls.preambleDefs += Config.getRaw('~vbtmCmds', 'foreach', package) % (
                              f.insertCmd,
                              f.head,
                              f.body)
                 else:
-                    cls.preambleDefs += Config.getRaw('vbtmCmds', 'foreachNoLang', package) % (
+                    cls.preambleDefs += Config.getRaw('~vbtmCmds', 'foreachNoLang', package) % (
                              f.insertCmd,
                              f.body)

@@ -21,9 +21,9 @@ def p_main(t):
         
 def p_elem(t):
     '''elem : COMMENT
+            | AUTORAW
             | ESCAPE
-            | STRETCH1
-            | STRETCH2
+            | STRETCH
             | EMPH
             | CITATION
             | FOOTNOTE
@@ -33,6 +33,8 @@ def p_elem(t):
             | IMGENV
             | PLUSENV
             | TABENV
+            | ORGTABLE
+            | RAW
             | VERBATIM
             | MACRO
             | BOX
@@ -40,4 +42,4 @@ def p_elem(t):
             | TEXT'''
     t[0] = t[1]
 
-parser = yacc.yacc(tabmodule='slide_parsetab', debugfile='slide_parsedbg', debug=not debug.quiet)
+parser = yacc.yacc(tabmodule='slide_parsetab', debugfile='slide_parsedbg', debug=debug.quiet<2)

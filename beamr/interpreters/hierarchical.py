@@ -6,7 +6,8 @@ Created on 1 Feb 2018
 from beamr.debug import debug, warn
 from beamr.lexers import docLexer, slideLexer
 from beamr.parsers import docParser, slideParser
-from beamr.interpreters import Config, VerbatimEnv
+from beamr.interpreters import Config, VerbatimEnv, TableEnv
+import re
 
 class Hierarchy(object):
 
@@ -28,26 +29,18 @@ class Hierarchy(object):
 
 
 class Document(Hierarchy):
-
-    docClassCmd = (r'\documentclass[%s]{%s}', r'\documentclass{%s}')
-    packageCmd = (r'\usepackage[%s]{%s}', r'\usepackage{%s}')
-    titlePageCmd = '\\frame{\\titlepage}\n'
-    begin = '\n\\begin{document}\n'
-    end = '\\end{document}\n'
-
-    # TODO title gizmos e.g. \title[This will be in footer]{This will be on title slide} Also, [\insertframenumber/\inserttotalframenumber]
-    preambleCmds = {'theme'    : '\\usetheme{%s}\n',
-                    'scheme'   : '\\usecolortheme{%s}\n',
-                    'title'    : '\\title{%s}\n',
-                    'author'   : '\\author{%s}\n',
-                    'institute': '\\institute{%s}\n',
-                    'date'     : '\\date{%s}\n'}
+    simpleOuterPreambleCmds = ['theme', 'scheme', 'author', 'institute']
 
     def __init__(self, txt):
-        if txt.find('\t') > -1:
+        txt = '\n' + txt
+        docLexer.lineno = 0
+
+        i = txt.find('\t')
+        if i > -1:
             txt = txt.replace('\t','    ')
-            warn("Input file has tabs, which will be considered 4 spaces; but please don't use tabs!")
-        super(Document, self).__init__(docParser.parse(txt, docLexer), after=self.end)
+            warn("Use of tabs is not recommended (will be considered 4 spaces)",
+                 range=txt.count('\n', 0, i))
+        super(Document, self).__init__(docParser.parse(txt, docLexer))
 
         # Collect all kinds of configuration
         Config.resolve()
@@ -59,23 +52,68 @@ class Document(Hierarchy):
         VerbatimEnv.resolve()
 
         # Document class and package commands
-        packageDef = self.splitCmd(self.docClassCmd, Config.getRaw('docclass'))
+        packageDef = self.splitCmd(Config.getRaw('~docclass'), Config.getRaw('docclass'))
+        packageDef += Config.getRaw('packageDefPre')
         for pkg in Config.effectiveConfig['packages']:
-            packageDef += self.splitCmd(self.packageCmd, pkg)
+            packageDef += self.splitCmd(Config.getRaw('~package'), pkg)
         packageDef += '\n'
 
         # Outer preamble commands
-        outerPreamble = ''
-        for k in self.preambleCmds:
-            if k in Config.effectiveConfig:
-                outerPreamble += self.preambleCmds[k] % Config.getRaw(k)
+        outerPreamble = Config.getRaw('outerPreamblePre')
+
+        for cmd in self.simpleOuterPreambleCmds:
+            cmdVal = Config.getRaw(cmd)
+            if cmdVal:
+                outerPreamble += Config.get('~'+cmd)(cmdVal)
+
+        # Figure out what date to specify
+        dateVal = Config.getRaw('date')
+        if not dateVal:
+            outerPreamble += Config.get('~date')('') # Date not specified therefore we must clear it in Beamer
+        elif dateVal not in ['default', 'auto']:
+            outerPreamble += Config.get('~date')(dateVal) # Date specified but not 'default' therefore we must specify it in Beamer
+
+        # Figure out what title and footer to specify
+        titleVal = Config.getRaw('title') or ''
+        footerVal = Config.getRaw('footer') or ''
+        if footerVal == 'title':
+            footerVal = titleVal
+        elif footerVal == 'counter':
+            footerVal = Config.getRaw('~footerCounter')
+        elif footerVal == 'title counter':
+            footerVal = titleVal + Config.getRaw('~footerCounter')
+        elif footerVal == 'counter title':
+            footerVal = Config.getRaw('~footerCounter') + titleVal
+        outerPreamble += Config.get('~title')((footerVal, titleVal))
+
+        # Place tables of contents where necessary
+        if Config.getRaw('sectionToc') == True:
+            outerPreamble += Config.get('~sectionToc')(Config.getRaw('tocTitle'))
+        if not Config.getRaw('headerToc'):
+            outerPreamble += Config.getRaw('~headerNoToc')
+
+        outerPreamble += Config.getRaw('outerPreamblePost')
 
         # Inner preamble commands
-        innerPreamble = VerbatimEnv.preambleDefs
-        if Config.effectiveConfig.get('titlepage', 'no') in ['yes', 'y', 'true', True]:
-            innerPreamble += self.titlePageCmd
+        innerPreamble = Config.getRaw('innerPreamblePre')
+        innerPreamble += VerbatimEnv.preambleDefs
+        if Config.getRaw('titlePage') == True:
+            innerPreamble += Config.getRaw('~titlePage')
+        if Config.getRaw('toc') == True:
+            innerPreamble += Config.get('~tocPage')(Config.getRaw('tocTitle'))
+        innerPreamble += Config.getRaw('innerPreamblePost')
 
-        self.before = packageDef + outerPreamble + self.begin + innerPreamble
+        # Outro commands
+        outro = Config.getRaw('outroPre')
+
+        bib = Config.getRaw('bib')
+        bibCmd = Config.getRaw('~bibPage')
+        outro += bibCmd % (Config.getRaw('bibTitle'), bib) if bib and bibCmd else ''
+
+        outro += Config.getRaw('outroPost')
+
+        self.before = packageDef + outerPreamble + Config.getRaw('~docBegin') + innerPreamble
+        self.after = outro + Config.getRaw('~docEnd')
 
     @staticmethod
     def splitCmd(cmdTemplate, content):
@@ -90,40 +128,38 @@ class Slide(Hierarchy):
 
     parsingQ = []
 
-    before = '\\begin{frame}%s{%s}\n'
-    after = '\n\\end{frame}\n'
-
-    def __init__(self, txt):
-        headBegin = txt.find('[')
-        headEnd = txt.find('\n', headBegin)
-        headSplit = (txt.find(' ', headBegin) + 1) or headEnd # If there is a blank, title begins after it; otherwise stop at end of line and title will be the empty string.
-
-# TODO THERE IS A BUG HERE WHEN SLIDE OPEN JUST BY [ ALONE
+    def __init__(self, title, opts, content):
+        docLexer.lineno += 1
+        nextlineno = docLexer.nextlineno
+        before = Config.get('~sldBeginNormal')(title)
 
         # Add breaks or shrink if applicable
-        opts = txt[headBegin+1 : headSplit].strip()
         if len(opts) > 0:
             if opts[0] == '.':
                 if opts == '...':
-                    opts = '[allowframebreaks]'
+                    before = Config.get('~sldBeginBreak')(title)
+                elif len(opts) == 1:
+                    before = Config.get('~sldBeginShrinkAuto')(title)
                 else:
                     try:
                         float(opts[1:])
-                        opts = '[shrink=%s]' % opts[1:]
+                        before = Config.get('~sldBeginShrink')((opts[1:], title))
                     except:
-                        warn('Slide title: Invalid shrink specifier:', opts[1:])
-                        opts = ''
+                        warn('Slide title: Invalid shrink specifier:', opts[1:], range=docLexer.lineno)
+                        before = Config.get('~sldBeginShrinkAuto')(title)
             else:
-                warn('Slide title: Invalid slide option:', opts)
-                opts = ''
+                warn('Slide title: Invalid option:', opts, range=docLexer.lineno)
 
-        super(Slide, self).__init__(slideParser.parse(txt[headEnd:-1], slideLexer),
-                         self.before % (opts, txt[headSplit:headEnd]),
-                         self.after)
+        slideLexer.lineno = docLexer.lineno
+        super(Slide, self).__init__(slideParser.parse(content, slideLexer),
+                         before,
+                         Config.getRaw('~sldEnd'))
 
         # Hierarchical children will have added themselves to the parsing queue which we process now
         while len(self.parsingQ) > 0:
             self.parsingQ.pop()()
+
+        docLexer.lineno = nextlineno
 
 
 class ListItem(Hierarchy):
@@ -139,8 +175,10 @@ class ListItem(Hierarchy):
     
     
     def __init__(self, txt):
+        lineno = slideLexer.lineno + 1
+        nextlineno = slideLexer.nextlineno
         txt = txt.strip()
-        
+
         def innerFunc():
             i = txt.find(' ') # Definitely >0 by way of definition of the list item regex
             marker = txt[:i]
@@ -152,6 +190,8 @@ class ListItem(Hierarchy):
 
             self.kind = 0 # Unordered list
             self.resume = False
+
+            debug('List marker', marker, range=lineno)
 
             if marker.find('.') > -1:
                 self.kind = 1 # Ordered list
@@ -173,11 +213,13 @@ class ListItem(Hierarchy):
                     describee = content[:j]
                     content = content[j+1:]
             
+            slideLexer.lineno = lineno
             super(ListItem, self).__init__(slideParser.parse(content, slideLexer),
                      '%s' + self.markers[self.kind] % (self.specs[self.emph + self.uncover], describee),
                      '\n')
 
         Slide.parsingQ.insert(0, innerFunc)
+        slideLexer.lineno = nextlineno
     
     @classmethod
     def resolve(cls, docList, depth=0):
@@ -222,17 +264,15 @@ class ListItem(Hierarchy):
 
 class Column(Hierarchy):
 
-    begin = '\\begin{columns}\n'
-    end = '\\end{columns}'
-    marker = '\\column{%.3f\\textwidth}\n'
-
     def __init__(self, txt):
+        lineno = slideLexer.lineno + 1
+        nextlineno = slideLexer.nextlineno
         txt = txt.strip()
 
-        debug('Txt picked up by col:', txt)
+        debug('Txt picked up by col:', txt, range=lineno)
         i = txt.find('\n') # Guaranteed >0 by regex
         head = txt[1:i].strip()
-        txt = txt[i+1:]
+        txt = txt[i:]
 
         # Identify width params
         self.percentage = self.units = 0.0
@@ -245,8 +285,10 @@ class Column(Hierarchy):
             self.units = float(head)
 
         def innerFunc():
+            slideLexer.lineno = lineno
             super(Column, self).__init__(slideParser.parse(txt, slideLexer), after='\n')
         Slide.parsingQ.insert(0, innerFunc)
+        slideLexer.lineno = nextlineno
 
     @classmethod
     def resolve(cls, docList):
@@ -269,8 +311,8 @@ class Column(Hierarchy):
             elif len(currentColumnSet) > 0:
 
                 # Begin and end column environment around first and last columns of current set.
-                currentColumnSet[0].before = cls.begin
-                currentColumnSet[-1].after += cls.end
+                currentColumnSet[0].before = Config.getRaw('~colBegin')
+                currentColumnSet[-1].after += Config.getRaw('~colEnd')
 
                 if totalSpace < 0.0: # Anti-stupid
                     warn('Fixed column widths exceed 100%.', totalSpace, 'remaining, setting to 0.')
@@ -283,7 +325,8 @@ class Column(Hierarchy):
                     if col.unspecified:
                         col.percentage = totalSpace / unspecifiedCount
 
-                    col.before += cls.marker % (col.percentage if col.percentage > 0.0
+                    col.before += Config.get('~colMarker')(col.percentage
+                                                  if col.percentage > 0.0
                                                 else col.units / totalUnits * totalSpace)
 
                 # Reset counters and set
@@ -297,37 +340,95 @@ class Column(Hierarchy):
                 cls.resolve(elem.children)
 
 
-class Box(Hierarchy):
-
-    # TODO anything config-able?
-    # TODO other types of box (affects regex)
-
-    begin = '\\begin{%sblock}{%s}\n'
-    end = '\\end{%sblock}\n'
+class OrgTable(TableEnv):
 
     def __init__(self, txt):
-        txt = txt.strip()[:-1]
+        lineno = slideLexer.lineno
+        nextlineno = slideLexer.nextlineno
 
-        # Isolate head (marker & title) from content
-        i = txt.find('\n') # Guaranteed >0 by regex definition
-        head = txt[:i].strip()
-        txt = txt[i+1:]
+        # Regular expression for separating table cells from a row (based on capturing groups)
+        r = re.compile(r'\|(\|?)((?:\\\||[^\|\n])*)')
+        # Regular expression for detecting horizontal bar lines
+        b = re.compile(r'\|{1,2}(-+(\+-)*)+\|{1,2}')
 
-        # Find box kind based on marker
-        kind = ''
-        if head[1] == '!':
-            kind = 'alert'
+        # This will store the contents of cells
+        arr = []
+        # These will remember cell alignments and where to place margins
+        aligns = ''
+        vBars = ''
+        hBars = []
 
-        # Isolate title (if any)
-        head = head[2:]
+        # Iterate through non-blank lines...
+        i = 0
+        for line in txt.splitlines():
+            lineno += 1
+            line = line.strip()
+            if line:
+
+                # Bar line. Mark horizontal bar
+                if b.match(line):
+                    hBars.append(i)
+
+                # Contents line. Create a row in the matrix, split and process
+                else:
+                    arr.append([])
+                    enumLine = [el for el in enumerate(r.findall(line))]
+
+                    # Iterate over cells...
+                    for j, (bar, text) in enumLine:
+
+                        # First visit this far to the right. Note if vertical bar is needed
+                        if len(vBars) <= j:
+                            vBars += '|' if bar else ' '
+
+                        # Not beyond right edge. Process contents
+                        if j+1 < len(enumLine):
+
+                            # First visit this far to the right. Note alignment based on blanks
+                            if len(aligns) <= j:
+                                # Anti-stupid: Empty cell on first line, e.g. 3 consecutive |s. It's really hard to tell what the intention was
+                                if not text:
+                                    aligns += 'c'
+
+                                elif text[0] == ' ':
+                                    aligns += 'c' if text[-1] == ' ' else 'r'
+                                else:
+                                    aligns += 'l' if text[-1] == ' ' else 'X'
+
+                            # Enqueue contents for parsing and addition to current matrix row
+                            self.qHelper(arr[i], text.replace(r'\|', '|'), lineno)
+                    i += 1
+
+        # Store what we have processed for use by __str__() in TableEnv.
+        # (arr contains only empty lists at this point, but they will be populated from the queue)
+        super(OrgTable, self).remember(arr, aligns, vBars, hBars)
+        slideLexer.lineno = nextlineno
+
+    # Helper function to enqueue the processing of a cell's contents and
+    # append the results to given table row
+    @staticmethod
+    def qHelper(arr, text, lineno):
+        def innerFunc():
+            slideLexer.lineno = lineno
+            arr.append(Hierarchy(slideParser.parse(text, slideLexer)))
+        Slide.parsingQ.insert(0, innerFunc)
+
+
+class Box(Hierarchy):
+
+    def __init__(self, kind, title, content):
+        lineno = slideLexer.lineno + 1
+        nextlineno = slideLexer.nextlineno
 
         # Enqueue function below to be called when all current parsing has finished
         def innerFunc():
-            super(Box, self).__init__(slideParser.parse(txt, slideLexer),
-                                      self.begin % (kind, head),
-                                      self.end % kind)
+            slideLexer.lineno = lineno
+            super(Box, self).__init__(slideParser.parse(content, slideLexer),
+                                      Config.get('~boxBegin', kind)(title),
+                                      Config.getRaw('~boxEnd', kind))
 
         Slide.parsingQ.insert(0, innerFunc)
+        slideLexer.lineno = nextlineno
 
 
 class Emph(Hierarchy):
@@ -342,19 +443,43 @@ class Emph(Hierarchy):
 
 
 class Stretch(Hierarchy):
-    def __init__(self, flag, txt=''):
-        self.flag = flag
+    def __init__(self, flagS, flagF, txt=''):
+        self.flagS = flagS if flagS else ''
+        self.flagF = flagF if flagF else ''
         def innerFunc():
             super(Stretch, self).__init__(slideParser.parse(txt, slideLexer) if txt else [])
         Slide.parsingQ.insert(0, innerFunc)
 
     def __str__(self):
-        return Config.get('stretch', self.flag)(super(Stretch, self).__str__())
+        f = Config.get('stretch', self.flagS + self.flagF, default=None)
+        if not f and self.flagS == self.flagF:
+            f = Config.get('stretch', self.flagS, default=None)
+            if not f:
+                f = Config.get('emph', self.flagS)
+        if f:
+            return f(super(Stretch, self).__str__())
+        return super(Stretch, self).__str__()
 
 
 class Footnote(Hierarchy):
+
     def __init__(self, txt):
+        i = txt.find(':')
+        label = txt[0:i] if i > -1 else None
+        txt = txt[i+1:]
+
         def innerFunc():
-            super(Footnote, self).__init__(slideParser.parse(txt, slideLexer),
-                                            r'\footnote[frame]{', '}')
+            if txt and label:
+                super(Footnote, self).__init__(slideParser.parse(txt, slideLexer),
+                                        Config.get('~fnLabel')(label),
+                                         '}')
+            elif txt:
+                super(Footnote, self).__init__(slideParser.parse(txt, slideLexer),
+                                        Config.getRaw('~fnSimple'),
+                                        '}')
+            elif label:
+                super(Footnote, self).__init__([],
+                                        Config.get('~fnOnlyLabel')(label))
+            else:
+                super(Footnote, self).__init__([])
         Slide.parsingQ.insert(0, innerFunc)
