@@ -36,7 +36,7 @@ Alternatively, [download a copy from Github](https://github.com/teonistor/beamr/
 
 ## Dependencies
 
-The interpreter runs on Python 2.7 and 3.4 onwards. It has been tested the most on 3.4 and 3.6 therefore bugs are more likely on 2.7 (and please use the most up-to-date version anyway).
+The interpreter runs on Python 2.7 and 3.4 onwards. Bugs are more likely on 2.7 as backwards compatibility has been added later.
 
 The following Python packages are mandatory and will be added automatically when installing using Pip:
 - `ply` 3.11 or newer
@@ -49,14 +49,14 @@ The intended use of the program requires `pdflatex` to be called internally; for
 
 (These are the packages I have installed on my system and it works. Perhaps not all of them are needed.)
 
-However if you plan to simply generate LaTeX sources to use in an external engine (e.g. Sharelatex) you can do so without having texlive installed at all.
+However if you plan to simply generate LaTeX sources to use in an external engine (e.g. Sharelatex) you can do so without having `texlive` installed at all.
 
 Optional dependencies:
-- `PIL` package for certain more advanced image arrangement features (installable from Pip):
+- `PIL` package for certain more advanced image arrangement features – installable from Pip:
   
       pip install Pillow
   
-- `pygmentize` executable for code listings using the *minted* environment (installable from your system package manager):
+- `pygmentize` executable for code listings using the *minted* environment – installable from your system package manager e.g.:
 
       apt install python-pygments
 
@@ -94,6 +94,19 @@ Examples:
 To edit the user configuration file use the `-e` (or `--edit`) flag and supply your preferred text editor, e.g.: `beamr -e kate`. On subsequent runs the editor can be ommitted as it will be saved in the configuration (unless you purposefully remove it). You can also dump the entire default configuration at the end of this file to more easily understand how and what can be edited: `beamr -ed`
 
 # Language specification
+
+## Summary of constructs
+
+The following constructs will be referred to throughout this documentation. Below is a handy table outlining which constructs can be used where by their line span:
+
+&nbsp; | Out of slide | In slide | Either
+---:| ------------- | ------------- | -----
+\>0 | Ignored text | Image frame, list, macro, text |
+1   | Scissors | Square bracket constructs, emphasis, escaping, inline LaTeX | Comment
+\>1 | Slides | Column, box, Org table, verbatim, Plus | Raw LaTeX
+2   | Heading |      |
+\>2 | Yaml configuration | |
+
 
 ## Document structure
 
