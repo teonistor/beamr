@@ -151,6 +151,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
    Subsection about cats
    ~~~~
     ```
+    
+    ![Headings example](snapshot/snapshot2.png)
 
 1. **Configuration** can be given in the form of Yaml blocks surrounded by `---` and `...`.
 
@@ -183,6 +185,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
 
    This is another paragraph.
     ```
+    
+    ![Plain text example](snapshot/snapshot7.png)
 
 1. **Text highlighting** is achieved by surrounding the highlighted text in one or two of the symbols `_ * ~`. 
 
@@ -190,10 +194,12 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
     ```
    _Italicised text_
    *Bold text*
-   ~Struck out text~
+   ~~Struck out text~~
    __Underlined text__
    **Alerted text** (coloured in red by default)
     ```
+    
+    ![Emphasis example](snapshot/snapshot3.png)
 
 1. **URLs** can be made clickable by surrounding them in square brackets; they should be on a single line.
 
@@ -223,6 +229,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
    [:] Insert a fixed vertical space
     ```
     
+    ![Stretch/align example](snapshot/snapshot4.png)
+    
     You can customize sequences of up to 3 of the symbols above to perform commands of your choice in your configuration. Always remember to use the `%s` placeholder where text will be inserted.
 
 1. **Footnotes, citations**:
@@ -235,6 +243,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
 
    $E=mc^2$[--einstein]
     ```
+    
+    ![Footnotes example](snapshot/snapshot5.png)
     
     Note that for historical reasons, in order for citations to work you must create a bibliography file and specify at some point in the configuration (e.g. `bib: filename`); then you must compile the bibliography file using `bibtex` and run LaTeX (directly or implicitly through Beamr) twice for all references to settle. Similarly, re-referenced footnotes will need two runs of `pdflatex` to be fully resolved.
     
@@ -262,6 +272,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
      Second column, which is 4 times as wide as the first
    ]
     ```
+    
+    ![Columns example](snapshot/snapshot6.png)
 
 1. **Lists** are created using list item markers which are composed of a few characters:
     - Start with `-` for a normal item, `*` for a highlighted one
@@ -314,6 +326,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
    *+ time
    ]
     ```
+    
+    ![List example (2)](snapshot/snapshot8.png)
 
 1. **Boxes** are created using round brackets and one of the symbols `*`, `!`. The box title follows this symbol on the same line. The contents follow on subsequent lines, indented relative to the opening bracket. The closing bracket must be on its own line and on the same level of indentation as the opening one.
 
@@ -333,6 +347,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
       - Inside the box
     )
     ```
+    
+    ![Boxes example](snapshot/snapshot9.png)
 
 1. **Images** can be added individually or in strips or grids. PIL support is coming soon, which will allow images to be better aligned without distorsions in a grid.
 
@@ -365,6 +381,8 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
     /* Or is it */
    }}
     ```
+    
+   ![Verbatim code example](snapshot/snapshot10.png)
 
 1. **Tables** are supported in Org Mode format:
     ```
@@ -399,7 +417,7 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
 
 ## Comments
 
-Comments can be given by using the hash symbol `#`. Should this symbol be actually required in the document, it can be escaped: `\#`. Note that comments do not work inside certain structures. Also note that `#` is problematic in LaTeX and you may need to escape it _for LaTeX as well_, i.e. to have `\\\#` in the Beamr source.
+Comments can be given by using the hash symbol `#`. Should this symbol be actually required in the document, it can be escaped: `\#`. Note that comments do not work inside certain structures (most of them). Also note that `#` is problematic in LaTeX and therefore will in turn be escaped for you in the LaTeX source (this will not happen inside raw LaTeX blocks or inline commands, which are the only places where you could ever need a lone `#` in LaTeX).
 
 # Full document examples
 
