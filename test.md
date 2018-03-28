@@ -78,7 +78,7 @@ The following constructs will be referred to throughout this documentation. Belo
 &nbsp; | Out of slide | In slide | Either
 ---:| ------------- | ------------- | -----
 \>0 | Ignored text | Image frame, list, macro, text |
-1   | Scissors | Square bracket constructs, emphasis, footnotes, escaping, inline LaTeX | Comment
+1   | Scissors | Square bracket constructs, emphasis, footnotes, escaping, inline LaTeX, arrows | Comment
 \>1 | Slides | Column, box, Org table, verbatim, Plus | Raw LaTeX
 2   | Heading |      |
 \>2 | Yaml configuration | |
@@ -371,7 +371,8 @@ Note that for historical reasons, in order for citations to work you must create
 
 The closing paranthesis must be on the same level of indentation as the opening one.
 
-Examples:
+Example:
+
     [
     (* Normal box
         Box contents...
@@ -389,6 +390,17 @@ Examples:
     ]
     
 ![Boxes example](snapshot/box.png)
+
+
+## Ascii arrow art
+A few 3-symbol sequences will be recognised and replaced with LaTeX commands that produce the corresponding arrow symbols:
+    -->
+    <->
+    <--
+    |->
+    ==>
+    <=>
+    <==
 
 
 ## Image Frame
@@ -453,7 +465,7 @@ Example:
 
 
 ## Verbatim (code listings)
-    {{<language>
+    {{ "{" }}{<language>
        <code>
     }}
 
@@ -479,29 +491,153 @@ Example:
 
 
 ## Org Table
+    | <cell> | <cell> | ... |
+    |--------+--------+-...-|
+    ...
+
+`<cell>`: Contents of a cell in the table. Single-line, but can contain other constructs. Vertical bars (`|`) in here need to be escaped.
+
+Tables are supported in Org Mode format, with some additional formatting features:
+- Horizontal lines can be added at any point and work irrespective of the position/existence of `+` characters within
+- On the first line, a doubled vertical bar (`|`) will create a vertical line at that location through the table
+- Change alignment by beginning cell contents on the first line with one of the symbols `<>.-` (which will not be included in the contents)
+
+Example:
+
+    |------------------|
+    | Dec|| Bin  ||Hex |
+    |------------------|
+    |  2  | 10    | 2  |
+    |  18 | 10010 | 12 |
+    |  31 | 11111 | 1F |
+    |------------------|
+
+![Org mode table example](snapshot/orgtable.png)
+
+
+## Inline LaTeX
+`\<name><arguments>`
+
+`<name>`: Name of LaTeX command, letters only
+
+`<arguments>`: An array of zero or more arguments enclosed in curly, square, or angle brackets. There must be no spaces between the arguments.
+
+The whole command must be followed by white space or by a backslash (`\`).
+
+Example:
+
+    [
+    Let's print the nice \LaTeX\ name.
+
+    This text is \color{green}{green}.
+    ]
+
+![Inline LaTeX example](snapshot/inlineLatex.png)
+
+
+## Raw LaTeX
+    &{
+      <latex>
+    }
+
+`<latex>`: Anything that should be passed unmodified into LaTeX code
+
+The closing curly brace must be on the same level of indentation as the ampersand. This construct can be used both inside and outside slides.
+
+
+## Scissors (document concatenation)
+`8<{<filename> <pages>}` or `>8{<filename> <pages>}`
+
+`<filename>`: Path to PDF file from which to include pages
+
+`<pages>` (optional): Page ranges to include (e.g. `1,2,4-7`), must not contain spaces
+
+This construct can only be used outside of slides.
+
+The behaviour of the scissors construct is affected by the "safe" flag. If the flag is set (default) Beamr will check the existence of the file and omit it if not found; if the "safe" flag is not set, a warning will be raised but the file will still be included.
+   
+Example:
+
+    8<{otherdoc.pdf 2-5,7,10}
+
+
+## Yaml Configuration Block
+    ---
+    <yaml>
+    ...
+
+
+## Macro
+`%{<name> <arguments>}`
+
+Macros constitute the most powerful element of the language, allowing you to define arbitrary constructs that exploit Python's ability to execute arbitrary strings as code. You can use macros as shortcuts to advanced LaTeX commands, or to perform complex actions.
+
+To create a macro, add an entry to the `macro` dictionary in the configuration. The key is the name you picked for the macro, and the value is the Python code that will be executed. The result of the macro can be either LaTeX or Beamr code and this is established by the macro code calling one of two functions `latex()` or `beamr()` with exactly one argument, which is the result of the macro. Macro code has access to a variable `arg` which is the array of blank-separated arguments given in the macro construct in the source file.
+Any exceptions raised during the execution of the macro will be caught and reported as non-fatal errors. The full traceback of such exceptions will be printed if the debugging flag (`-d`) is set.
+If you wish to print information from inside your macro use the debug function provided; do not use the print function, as this will interfere with and break the output of the program. If you write a macro which generates another macro statement, the behaviour is undefined; don't do that.
+
+For a first example, suppose that you often need to draw arrows of various lengths using the `tikz` package; but inlining the appropriate command each time is cumbersome and ugly.
+
+As another example, suppose you are head of cyber security at a company and frequently need to include in presentations the beginnings of the first few `<script>` tags of various web pages. This can be automated right inside a macro with the appropriate Python packages installed.
+
+    ---
+    # Essential set up
+    title: Macros Examples
+    footer: counter title
+    sectionToc: yes
+    verbatim: minted
+
+    # First we must tell pdflatex to include the tikz package for first example
+    packages: tikz
+
+    # Now we define our macros. Note Yaml multiline string syntax
+    macro:
+      arrow: |
+        code = r'\tikz[baseline=-0.5ex]{ \draw [%s-%s] (0,0) --   (%s,0); }'
+        if arg[0] == '>':
+            latex(code % ('|', '>', arg[1]))
+        elif arg[0] == '<':
+            latex(code % ('<', '|', arg[1]))
+
+      script: |
+        import requests, re
+        a = requests.get(arg[0]).text
+        a = re.findall(r'<script[\s\S]*?<\/script>', a)
+        a = map(lambda s: '  '+s[:int(arg[2])], a[:int(arg[1])])
+        a = '\n{{ javascript\n' + '\n'.join(a) + '\n}}'
+        beamr(a)
+    ...
+
+    Arrow macro
+    -----------
+    [ Little arrows
+    %{arrow > 1em} %{arrow > 2em} %{arrow < 3em}
+
+    %{arrow < 4em} %{arrow < 1em} %{arrow < 1em} %{arrow > 3em} %{arrow > 4em}
+
+    %{arrow < 3em} %{arrow > 1em} %{arrow < 1em} %{arrow < 3em}
+    ]
+    [ Big arrows
+    %{arrow > 16em} %{arrow > 26em} %{arrow < 23em}
+
+    %{arrow < 23em} %{arrow > 14em} %{arrow < 18em} %{arrow < 25em}
+    ]
+
+    Script tag macro
+    ----------------
+    [.20 Google scripts
+    First 5 scripts from [https://google.com]
+    %{script https://google.com 5 200}
+    ]
+    [ BBC scripts
+    First 3 scripts from [https://bbc.co.uk]
+    %{script https://bbc.co.uk 3 150}
+    ]
+
+![Macro example](snapshot/macro.png)
 
 
 
-
-
-
-1. **Configuration** can be given in the form of Yaml blocks surrounded by `---` and `...`.
-
-    Example:
-    ```
-   ---
-   theme: Berkeley
-   scheme: beetle
-   ...
-    ```
-
-1. **Document concatenation**. Pages can be added from another document by giving its name and page ranges in the *scissors* construct:
-    ```
-   8<{otherdoc.pdf 2-5,7,10}
-
-   # The scissors can go both ways, e.g.:
-   >8{yetanotherdoc.pdf 7-9,14}
-    ```
 
 
 ## Code listings
