@@ -63,11 +63,6 @@ Optional dependencies:
 
 ## Configuration
 
-The program employs cascade-style configuration where many of the LaTeX constructs are defined and can therefore be altered if the user so desires. Configuration can be given in a number of places which take the following order of precedence:
-1. Command-line general configuration override (e.g. `--config='scheme: albatross'`)
-1. Input file Yaml blocks, top-down (examples below)
-1. User configuration file (`~/.beamrrc`) Yaml blocks, top-down (examples below)
-1. Implicit configuration dictionary (as defined in `beam.interpreters.config`)
 
 Examples:
 
@@ -93,11 +88,19 @@ Examples:
 
 To edit the user configuration file use the `-e` (or `--edit`) flag and supply your preferred text editor, e.g.: `beamr -e kate`. On subsequent runs the editor can be ommitted as it will be saved in the configuration (unless you purposefully remove it). You can also dump the entire default configuration at the end of this file to more easily understand how and what can be edited: `beamr -ed`
 
+# Concept
+
+The fundamental building block of a Beamr source is the slide. A slide show is a succession of slides, in the order given in the input file; however, more pages can be generated in the resulting PDF document than there are slides in the input file (for instance because of an automatically generated table of contents, or due to transitions inside slides).
+
+Within the slides, text can be written plainly or by employing any of the numerous constructs which are discussed in detail in the next section.
+
+The generation of LaTeX code (and thus of the resulting PDF document) is driven by a user-editable configuration taking the form of a large dictionary, which can be altered by inserting Yaml blocks in the source file (outside slides), in a configuration file in the user's home directory, or directly via command line arguments. The order of precedence of these blocks as well as the meanings of different dictionary keys are explained further down.
+
 # Language specification
 
 ## Summary of constructs
 
-The following constructs will be referred to throughout this documentation. Below is a handy table outlining which constructs can be used where by their line span:
+The following constructs will be referred to throughout this documentation. Below is a handy table outlining which constructs can be used where by their line span, which will be useful to remember:
 
 &nbsp; | Out of slide | In slide | Either
 ---:| ------------- | ------------- | -----
@@ -108,11 +111,13 @@ The following constructs will be referred to throughout this documentation. Belo
 \>2 | Yaml configuration | |
 
 
-## Document structure
+## Slide
+    [<modifier> <title
+     <content>
+    ]
+    
 
-At the outmost level of an input file reside 4 types of elements:
-
-1. **Slides** are delimited by opening and closing square brackets, placed at the very beginning of lines of text (with no white space). An optional slide title can be given after the opening bracket.
+are delimited by opening and closing square brackets, placed at the very beginning of lines of text (with no white space). An optional slide title can be given after the opening bracket.
 
     Example:
 ```
@@ -275,6 +280,13 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
     
     ![Columns example](snapshot/snapshot6.png)
 
+## List
+Unnumbered list: `<marker><pause> <content>`
+Restarting numbered list: `<marker>.<pause> <content>`
+Resuming numbered list: `<marker>,<pause> <content>`
+Description list: `<marker>=<pause> <describee>=<description>` or `<marker>=<pause> <content>`
+
+    
 1. **Lists** are created using list item markers which are composed of a few characters:
     - Start with `-` for a normal item, `*` for a highlighted one
     - Add `.` or `,` for a numbered list, the difference being that if this is the first item of the current numbered list `,` will resume the counter from the pevious numbered list of the same depth. Or add `=` for a description list, where the describee will be separated from the description by a further `=`; if this is absent, the first word will be considered to be the describee. Adding none of these results in an unnumbered list.
@@ -371,6 +383,7 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
      file3 file4 +}
     ```
 
+## Code listings
 1. **Verbatim text** for code listings in 2 flavours: listings, minted. Choose minted in the config if you have `pygmentize` installed (otherwise `pdflatex` will fail).
     ```
    {{ "{" }}{c++ 
@@ -381,7 +394,6 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
     /* Or is it */
    }}
     ```
-    
    ![Verbatim code example](snapshot/snapshot10.png)
 
 1. **Tables** are supported in Org Mode format:
@@ -415,9 +427,22 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
 
 1. Integration with Plus (coming later)
 
+## Escaped characters
+
+
+
 ## Comments
 
-Comments can be given by using the hash symbol `#`. Should this symbol be actually required in the document, it can be escaped: `\#`. Note that comments do not work inside certain structures (most of them). Also note that `#` is problematic in LaTeX and therefore will in turn be escaped for you in the LaTeX source (this will not happen inside raw LaTeX blocks or inline commands, which are the only places where you could ever need a lone `#` in LaTeX).
+Comments can be given by using the hash symbol `#`. Should this symbol be actually required in the document, it can be escaped: `\#`. Note that comments do not work inside certain structures. Also note that `#` is problematic in LaTeX and therefore will in turn be escaped for you in the LaTeX source (this will not happen inside raw LaTeX blocks or inline commands, which are the only places where you could ever need a lone `#` in LaTeX).
+
+# Configuration keys
+
+The program employs cascade-style configuration where many parameters and LaTeX commands are defined and can therefore be altered if the user so desires. Configuration can be given in a number of places which take the following order of precedence:
+1. Command-line special flags (e.g. `-u`)
+1. Command-line general configuration override (e.g. `--config='scheme: albatross'`)
+1. Input file Yaml blocks, top-down (examples below)
+1. User configuration file (`~/.beamrrc`) Yaml blocks, top-down (examples below)
+1. Implicit configuration dictionary (as defined in `beamr.interpreters.config`)
 
 # Full document examples
 
