@@ -61,33 +61,6 @@ Optional dependencies:
       apt install python-pygments
 
 
-## Configuration
-
-
-Examples:
-
-    # Set author and title for the document
-    author: John Doe
-    title: A Presentation on Presentations
-    
-    # Set the date to be used on the title page (if unset, Beamer will use the current date by default)
-    date: 32nd February 2151
-    
-    # Tell the program to generate a title page
-    titlepage: yes
-    
-    # Set double-asterisk emphasis to colour the text green instead (note Yaml dictionary inside dictionary syntax, as well as the single quotes around strings with special characters)
-    emph:
-	'**': '\color{green}{{ "{%s" }}}'
-    
-    # Tell LaTeX to import 2 additional packages, where the second package requires options (note Yaml list syntax)
-    packages:
-	- mypackage
-	- option,otheroption,myotherpackage
-
-
-To edit the user configuration file use the `-e` (or `--edit`) flag and supply your preferred text editor, e.g.: `beamr -e kate`. On subsequent runs the editor can be ommitted as it will be saved in the configuration (unless you purposefully remove it). You can also dump the entire default configuration at the end of this file to more easily understand how and what can be edited: `beamr -ed`
-
 # Concept
 
 The fundamental building block of a Beamr source is the slide. A slide show is a succession of slides, in the order given in the input file; however, more pages can be generated in the resulting PDF document than there are slides in the input file (for instance because of an automatically generated table of contents, or due to transitions inside slides).
@@ -125,7 +98,8 @@ Opening and closing square brackets must be placed at the very beginning of line
 `<content>`: The content of the slide. Indentation is optional but may help you better visualise the structure of your document.
 
 
-Examples:
+Example:
+
     [ First slide
       In this presentation we will be talking about slides.
     ]
@@ -141,7 +115,7 @@ Examples:
       This slide has no title.
     ]
 
-![Slide examples](snapshot/snapshot01_slide.png)
+![Slide examples](snapshot/slide.png)
 
 
 ## Text
@@ -169,7 +143,7 @@ Example:
     Subsection about dogs
     ~~~~
     
-![Headings example](snapshot/snapshot2.png)
+![Headings example](snapshot/heading.png)
 
 
 ## List
@@ -190,7 +164,8 @@ Description list: `<marker>=<pause> <describee>=<description>` or `<marker>=<pau
 `<describee>`, `<description>`: In a description list, a multi-word describee needs to be separated from the description by an equal sign. If this is missing, the first word of the content will be considered to be the describee
 
 
-Examples:
+Example:
+
     [
     Ordinary bullet list:
 
@@ -233,7 +208,7 @@ Examples:
     *+ time
     ]
     
-![List example (2)](snapshot/snapshot8.png)
+![List example (2)](snapshot/list.png)
 
 
 ## Column
@@ -246,7 +221,7 @@ Examples:
 
 Multiple column environments can exist on the same slide, as well as columns inside columns, although that is a rather strange use case.
 
-Examples:
+Example:
 
     [
     Text before the columns
@@ -268,7 +243,7 @@ Examples:
       Second column, which is 4 times as wide as the first
     ]
 
-![Columns example](snapshot/snapshot6.png)
+![Columns example](snapshot/column.png)
 
 
 ## Emphasis
@@ -279,6 +254,7 @@ Examples:
 `<text>`: The text to be emphasised. It must not start or end with white space. It cannot be broken across multiple lines, but it can contain other constructs that fit on one line.
 
 Example:
+
     [
     _Italicised text_
 
@@ -293,7 +269,7 @@ Example:
     *Bold and _italics_*
     ]
 
-![Emphasis example](snapshot/snapshot02_emph.png)
+![Emphasis example](snapshot/emph.png)
 
 
 ## Square Bracket Construct
@@ -322,7 +298,8 @@ The interpreter looks up what to do in the following order: first it checks for 
 
 Keep in mind the order above when defining your own commands. For instance, if you want to use the construct like this: `[^_ fancy text ^_]` it is OK to add your command to the key `^_` since this key is not already in use. On the other hand, if you wish to do something like `[>< fancier text ><]` you need the key in the dictionary to be `><><`, as merely using `><` would obliterate the centred text command already defined (this would not break the program, but could lead to unexpected results).
 
-Examples:
+Example:
+
     [
     [>Right-aligned text>]
 
@@ -341,7 +318,7 @@ Examples:
     [<Boom!>]
     ]
 
-![Stretch/align example](snapshot/snapshot03_stretch.png)
+![Stretch/align example](snapshot/stretch.png)
 
 
 ## Footnotes and citations
@@ -365,6 +342,7 @@ Citation without options: `[--<citation>]`
 
 
 Example:
+
     [
     This presentation is very interesting[-As I mentioned in my previous presentation-].
 
@@ -375,7 +353,7 @@ Example:
     $E=mc^2$[--einstein]
     ]
     
-![Footnotes example](snapshot/snapshot5.png)
+![Footnotes example](snapshot/footnote.png)
     
 Note that for historical reasons, in order for citations to work you must create and specify a bibliography file , then compile it using `bibtex` and run LaTeX (directly or implicitly through Beamr) twice for all references to settle. Similarly, re-referenced footnotes will need two runs of `pdflatex` to be fully resolved.
 
@@ -410,7 +388,101 @@ Examples:
     )
     ]
     
-![Boxes example](snapshot/snapshot9.png)
+![Boxes example](snapshot/box.png)
+
+
+## Image Frame
+`~{<filenames> <shape> <size>}`
+
+`<filenames>`: One or more file names (paths) on one or more lines. File extensions are optional and paths can be relative to the graphics path or absolute. Separating file names on several lines is only relevant when creating a grid. A dot (`.`) can be inserted instead of a file name to produce an empty cell in the grid.
+
+`<shape>` (optional): If you want to use several images, specify whether they need to be arranged in a horizontal strip (`-`), vertical strip (`|`), or grid (`+`).
+
+`<size>` (optional): `width` or `<width>x<height>` or `x<height>`. Width and height can be absolute (e.g. `5cm`) or relative to the corresponding dimension of the text area (e.g. `40`, meaning 40%). If unspecified, the size defaults to the full width of the text area, except for the vertical strip, where it defaults to full height.
+
+The behaviour of the image frame is affected by the "safe" flag and by whether the PIL module is available in Python. To best explain the decisions involved, a diagram is necessary:
+
+![Image frame decision diagram](img/img_diagram.png)
+
+Example:
+
+    [ Vertical
+    ~{b d l |}
+    ]
+    [ Horizontal
+    ~{b l
+      d -}
+    ]
+    [ 3 2 1
+    ~{b d d
+      l b
+      w + 10em}
+    ]
+    [ 2x2
+    ~{b d
+      l b + 50x50}
+    ]
+
+    [ Gaps
+    ~{b d b
+      l . b
+      l l b + }
+    ]
+
+    [ Matrix
+    ~{ d d d
+      d . .
+      . d .
+      . . .
+      d d d + 60}
+    ]
+
+    [ Column $3 + 2 + 1$
+    ~{ d l d . b d . w |}
+    ]
+
+    [ Two columns
+    |25%
+    ~{ d l d w b | 100}
+    |
+    #[>] ~{ d l d w b d w |}
+    Text text text text text text text text text text text text text text text text text text text text text text text text text text text text text text
+    ]
+
+![Image frame example](snapshot/img.png)
+
+
+## Verbatim (code listings)
+    {{<language>
+       <code>
+    }}
+
+`<language>` (optional): Language that the code is in, for syntax highlighting. Note that support varies depending on whether the "listings" or "minted" environment is used.
+
+`<code>`: Code to be listed. Indentation relative to the braces is recommended but not mandatory.
+
+The opening and closing pairs of curly braces must be on the same level of indentation.
+
+By default, the "listings" environment is used. You may wish to switch to the better-looking "minted" environment in the configuration, but in order for it to work you must have the `pygmentize` executable available on your machine, otherwise `pdflatex` will fail.
+
+Example:
+
+    {{ "{" }}{c++ 
+      #include<bar>
+      int main() {
+        printf("is wider\n");
+      }
+      /* Or is it */
+    }}
+
+![Verbatim code example](snapshot/verbatim.png)
+
+
+## Org Table
+
+
+
+
 
 
 1. **Configuration** can be given in the form of Yaml blocks surrounded by `---` and `...`.
@@ -431,46 +503,12 @@ Examples:
    >8{yetanotherdoc.pdf 7-9,14}
     ```
 
-1. Any other text which does not fall into these categories is ignored (in the future there will be options to add notes to slides and export handouts with those notes separately from the plain slide show).
-
-
-
-
-
-
-1. **Images** can be added individually or in strips or grids. PIL support is coming soon, which will allow images to be better aligned without distorsions in a grid.
-
-    Examples:
-    ```
-   One image, half-width:
-   ~{file 50%}
-
-   One image, 10 cm wide by 2 em tall:
-   ~{file 10cmx2em}
-
-   A vertical strip of 3 images (by default being as tall as the slide:
-   ~{file1 file2 file3 |}
-
-   A horizontal strip of 4 images, 15 cm wide:
-   ~{file1 file2 file3 file4 - 15cm}
-
-   A grid of 4 images:
-   ~{file1 file2
-     file3 file4 +}
-    ```
 
 ## Code listings
 1. **Verbatim text** for code listings in 2 flavours: listings, minted. Choose minted in the config if you have `pygmentize` installed (otherwise `pdflatex` will fail).
     ```
-   {{ "{" }}{c++ 
-    #include<bar>
-    int main() {
-      printf("is wider\n");
-    }
-    /* Or is it */
-   }}
+   
     ```
-   ![Verbatim code example](snapshot/snapshot10.png)
 
 1. **Tables** are supported in Org Mode format:
     ```
