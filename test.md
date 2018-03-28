@@ -105,59 +105,313 @@ The following constructs will be referred to throughout this documentation. Belo
 &nbsp; | Out of slide | In slide | Either
 ---:| ------------- | ------------- | -----
 \>0 | Ignored text | Image frame, list, macro, text |
-1   | Scissors | Square bracket constructs, emphasis, escaping, inline LaTeX | Comment
+1   | Scissors | Square bracket constructs, emphasis, footnotes, escaping, inline LaTeX | Comment
 \>1 | Slides | Column, box, Org table, verbatim, Plus | Raw LaTeX
 2   | Heading |      |
 \>2 | Yaml configuration | |
 
 
 ## Slide
-    [<modifier> <title
-     <content>
+    [<modifier> <title>
+      <content>
+    ]
+
+Opening and closing square brackets must be placed at the very beginning of lines of text (with no white space). Everything inside is optional:
+
+`<modifier>`: Specify what should happen if the contents of the slide do not fit on a page. They can be split across multiple pages (`...`) or shrunk to fit (`.`). You can also enforce shrinking by a percentage of your choice (e.g. `.14`)
+
+`<title>`: The title of the slide
+
+`<content>`: The content of the slide. Indentation is optional but may help you better visualise the structure of your document.
+
+
+Examples:
+    [ First slide
+      In this presentation we will be talking about slides.
+    ]
+    [ Second slide
+      This is the second slide.
+      
+      It contains two paragraphs.
+    ]
+    [.20 Third slide
+      The text on this slide will be 20% smaller than usual.
+    ]
+    [
+      This slide has no title.
+    ]
+
+![Slide examples](snapshot/snapshot01_slide.png)
+
+
+## Text
+
+Plain text is simply written as such. Paragraphs need to be separated by an empty line, as per LaTeX convention.
+
+
+## Heading
+    <title>
+    <symbol streak>
+    
+Headings are given outside of slides by following a line of text with a streak of one of the symbols `- _ = ~` repeated at least 4 times. Headings should be surrounded by a visibly empty line before and after. The symbols will be understood to define sections, subsections, and subsubsections in the order in which they are encountered in the source file. 
+
+Example:
+
+    Introduction
+    ----
+
+    Section about animals
+    ----
+
+    Subsection about cats
+    ~~~~
+    
+    Subsection about dogs
+    ~~~~
+    
+![Headings example](snapshot/snapshot2.png)
+
+
+## List
+Unnumbered list: `<marker><pause> <content>`
+
+Restarting numbered list: `<marker>.<pause> <content>`
+
+Resuming numbered list: `<marker>,<pause> <content>`
+
+Description list: `<marker>=<pause> <describee>=<description>` or `<marker>=<pause> <content>`
+
+`<marker>`: A dash (`-`) for a normal item, or an asterisk (`*`) for a highlighted one
+
+`<pause>`: Optionally add a plus symbol (`+`) for items you wish to be revealed in turn on the next page of the slide
+
+`<content>`: The content of the list item. This can be multiline and contain any other in-slide constructs but needs to be indented relative to the marker.
+
+`<describee>`, `<description>`: In a description list, a multi-word describee needs to be separated from the description by an equal sign. If this is missing, the first word of the content will be considered to be the describee
+
+
+Examples:
+    [
+    Ordinary bullet list:
+
+    - bullet
+    - bullet
+    - more bullet
+    ]
+
+    [
+    Numbered list on a few levels, each item telling you what it will be numbered:
+
+    -. one
+    -, two
+      -, one
+      -. two
+	-. one
+    -. three
+      -, three
+      -, four
+    -. four
+    -, five
+      -. one
+    -. six
+      -. one
+    ]
+
+    [
+    Description list:
+
+    -=Apple=a fruit
+    -=Fruit with long name=another fruit
+    -=Potato vegetable
+    ]
+
+    [
+    List where items will be revealed one by one and highlighted when they appear:
+
+    *+ one
+    *+ more
+    *+ time
     ]
     
+![List example (2)](snapshot/snapshot8.png)
 
-are delimited by opening and closing square brackets, placed at the very beginning of lines of text (with no white space). An optional slide title can be given after the opening bracket.
 
-    Example:
-```
-[ Overview
- In this presentation we will be talking about this and that.
-]
-```
+## Column
+    |<width specifier>
+      <content>
+      
+`<width specifier>` (optional): Can be absolute (e.g. `10em`, `60pt`), relative to slide width (e.g. `35%`), or relative to other columns (e.g. `7`). In the third case, columns will split between themselves, proportionally with their numbers, the space unclaimed by columns in the second case. Columns without a width specifier will split equally between them the space unclaimed by columns in the second case, therefore they do not make sense in the same context as columns in the third case.
 
-   ![Overview example](snapshot/snapshot1.png)
+`<content>`: Can contain any in-slide construct. Must be indented relative to the vertical bar
 
-    Shrink (`.<number>`) or break (`...`) options can be specified immediately after the opening square bracket; these are useful when a slide has too much content to fit in under default settings.
+Multiple column environments can exist on the same slide, as well as columns inside columns, although that is a rather strange use case.
 
-    Examples:
-```
-[... Long slide
-If this text is too long, it will be split across multiple slides.
-]
-[.20
-This slide has no title, but its text will be 20% smaller than usual.
-]
-[.
-This slide has no title, but its text will be automatically shrunk to fit if it's too large.
-]
-```
+Examples:
 
-1. **Headings** are given outside by following a line of text with a streak of one of the symbols `- _ = ~` repeated at least 4 times. Headings should be surrounded by a visibly empty line before and after. The symbols will be understood to define sections, subsections, and subsubsections in the order in which they are encountered. 
+    [
+    Text before the columns
 
-    Example:
-    ```
-   Introduction
-   ----
+    |30%
+      This is a narrow column on the left
 
-   Section about animals
-   ----
+    |
+      This is a wide column on the right
 
-   Subsection about cats
-   ~~~~
-    ```
+    Text after the columns
+    ]
+
+    [
+    |1
+      First column
+
+    |4
+      Second column, which is 4 times as wide as the first
+    ]
+
+![Columns example](snapshot/snapshot6.png)
+
+
+## Emphasis
+`<flag><text><flag>`
+
+`<flag>`: `_` for italics, `*` for bold, `__` for underline, `**` for alert (coloured in red by default). The closing flag must match the opening one.
+
+`<text>`: The text to be emphasised. It must not start or end with white space. It cannot be broken across multiple lines, but it can contain other constructs that fit on one line.
+
+Example:
+    [
+    _Italicised text_
+
+    *Bold text*
+
+    __Underlined text__
+
+    **Alerted text**
+
+    __*Bold and underlined*__
+
+    *Bold and _italics_*
+    ]
+
+![Emphasis example](snapshot/snapshot02_emph.png)
+
+
+## Square Bracket Construct
+Long form: `[<flag><text><flag>]`
+
+Short form: `[<flag>]`
+
+`<flag>`: A combination of up to 3 of the following characters: `<>_^:+*~.`. The closing flag must match the opening one, except if it is a single angle bracket.
+
+`<text>`: The text to be processed. It cannot be broken across multiple lines, but it can contain other constructs that fit on one line.
+
+This construct is intended for customisation. You can define your own long-form and short-form commands in the configuration, as will be detailed in the next section. There are many combinations to choose from the characters above and a few have been defined by default:
+- (no flag): Clickable URL
+- `<>`: Text stretched across whole slide width
+- `><`: Centred block of text
+- `<<`: Left-aligned block of text (redundant by default, but relevant if justification to both sides set)
+- `>>`: Right-aligned block of text
+- `+` : Insert a pause (text after this will appear on the next page of the slide)
+- `>` : Insert a horizontal filler
+- `^^`: Push this text up by amount specified, e.g. 3em (use negative numbers to push down)
+- `..`: Footnote sized text
+- `:`: Insert a fixed vertical space of 5mm
+- `~`: Struck out text
+
+The interpreter looks up what to do in the following order: first it checks for both the start and the end flags, concatenated; then for the start flag alone; then for the start flag in the emphasis dictionary. This last point means that you can also create bold, underlined text etc through the square bracket construct, which is helpful if you use symbols in text in a way that could be misinterpreted as flags.
+
+Keep in mind the order above when defining your own commands. For instance, if you want to use the construct like this: `[^_ fancy text ^_]` it is OK to add your command to the key `^_` since this key is not already in use. On the other hand, if you wish to do something like `[>< fancier text ><]` you need the key in the dictionary to be `><><`, as merely using `><` would obliterate the centred text command already defined (this would not break the program, but could lead to unexpected results).
+
+Examples:
+    [
+    [>Right-aligned text>]
+
+    [>Centred text<]
+
+    [.Footnote sized text.]
+
+    [>]Let's[>]use[>]horizontal[>]fillers[>]~
+
+    [^-3cm^]Push this text down by 3~cm
+
+    For more information visit [https://teonistor.github.io/beamr/]
+    ]
+
+    [
+    [<Boom!>]
+    ]
+
+![Stretch/align example](snapshot/snapshot03_stretch.png)
+
+
+## Footnotes and citations
+Footnote with label: `[-<label>:<text>-]`
+
+Footnote without label: `[-<text>-]` or `[-:<text>-]` (if the text contains a colon)
+
+Re-reference a previous footnote: `[-<label>:-]`
+
+Citation with options: `[--<citation>:<options>]`
+
+Citation without options: `[--<citation>]`
+
+`<label>`: An optional label that can be attached to a footnote to allow it to be referenced more than once
+
+`<text>`: Footnote text. It cannot be broken across multiple lines, but it can contain other constructs that fit on one line.
+
+`<citation>`: Name of an entry in the bibliography file (defined in the configuration as detailed in the next section)
+
+`<options>`: Additional options to be passed to LaTeX's `\cite` command
+
+
+Example:
+    [
+    This presentation is very interesting[-As I mentioned in my previous presentation-].
+
+    This footnote[-24:Very interesting-] has a label, which I can now use to refer to it again[-24:-].
+
+    If you need a colon in the footnote text you can give it an empty label[-:Meet at 15:30-].
+
+    $E=mc^2$[--einstein]
+    ]
     
-    ![Headings example](snapshot/snapshot2.png)
+![Footnotes example](snapshot/snapshot5.png)
+    
+Note that for historical reasons, in order for citations to work you must create and specify a bibliography file , then compile it using `bibtex` and run LaTeX (directly or implicitly through Beamr) twice for all references to settle. Similarly, re-referenced footnotes will need two runs of `pdflatex` to be fully resolved.
+
+
+## Box
+    (<flag> <title>
+      <content>
+    )
+
+`<flag>`: An asterisk (`*`) for a normal box, a bang (`!`) for an alert box, or a question mark (`?`) for an example box
+
+`<title>` (optional): The title of the box
+
+`<content>`: Can contain any in-slide construct. Indentation relative to the round brackets is recommended but not mandatory.
+
+The closing paranthesis must be on the same level of indentation as the opening one.
+
+Examples:
+    [
+    (* Normal box
+        Box contents...
+        |45%
+          We can have columns inside the box
+        |45%
+          (although we need to make them narrower)
+    )
+
+    (! Alert box
+      Box contents...
+      - We also have a list
+      - Inside the box
+    )
+    ]
+    
+![Boxes example](snapshot/snapshot9.png)
+
 
 1. **Configuration** can be given in the form of Yaml blocks surrounded by `---` and `...`.
 
@@ -180,187 +434,9 @@ This slide has no title, but its text will be automatically shrunk to fit if it'
 1. Any other text which does not fall into these categories is ignored (in the future there will be options to add notes to slides and export handouts with those notes separately from the plain slide show).
 
 
-## Slide structure
 
-1. **Plain text**: Just write it. Paragraphs need to be separated by an empty line, as per LaTeX convention. Be aware of the structures below, as your text can be interpreted as one of them.
 
-    Example:
-    ```
-   This is a paragraph.
 
-   This is another paragraph.
-    ```
-    
-    ![Plain text example](snapshot/snapshot7.png)
-
-1. **Text highlighting** is achieved by surrounding the highlighted text in one or two of the symbols `_ * ~`. 
-
-    Example:
-    ```
-   _Italicised text_
-   *Bold text*
-   ~~Struck out text~~
-   __Underlined text__
-   **Alerted text** (coloured in red by default)
-    ```
-    
-    ![Emphasis example](snapshot/snapshot3.png)
-
-1. **URLs** can be made clickable by surrounding them in square brackets; they should be on a single line.
-
-    Example:
-    ```
-   [https://www.example.com/]
-    ```
-
-1. **Text stretching, alignment, and other square-bracket constructs**:
-    ```
-   [>Right-aligned text>]
-
-   [>Centred text<]
-
-   [<Left-aligned text (redundant by default, but relevant if justification to both sides set)<]
-
-   [<Text stretched across whole slide width>]
-
-   [^1em^] Push this text up by 1 em (use negative numbers to push down)
-
-   [.Footnote sized text.]
-
-   [+] Insert a pause (text after this will appear on the next frame of the slide)
-
-   [>] Insert a horizontal filler
-
-   [:] Insert a fixed vertical space
-    ```
-    
-    ![Stretch/align example](snapshot/snapshot4.png)
-    
-    You can customize sequences of up to 3 of the symbols above to perform commands of your choice in your configuration. Always remember to use the `%s` placeholder where text will be inserted.
-
-1. **Footnotes, citations**:
-    ```
-   This presentation is very interesting[-As I mentioned in my previous presentation-].
-
-   This footnote[-24:Very interesting-] has a label, which I can now use to refer to it again[-24:-].
-
-   If you need a colon in the footnote text you can give it an empty label[-:Meet at 15:30-].
-
-   $E=mc^2$[--einstein]
-    ```
-    
-    ![Footnotes example](snapshot/snapshot5.png)
-    
-    Note that for historical reasons, in order for citations to work you must create a bibliography file and specify at some point in the configuration (e.g. `bib: filename`); then you must compile the bibliography file using `bibtex` and run LaTeX (directly or implicitly through Beamr) twice for all references to settle. Similarly, re-referenced footnotes will need two runs of `pdflatex` to be fully resolved.
-    
-1. **Columns** are begun by a vertical bar, followed optionally by a width specifier which can be absolute (e.g. `10em`, `60pt`), relative to slide width (e.g. `35%`), or relative to other columns (e.g. `7`); in the third case, columns will split between themselves, proportionally with their numbers, the space unclaimed by columns in the second case. Columns without a width specifier will split equally between them the space unclaimed by columns in the second case, therefore they do not make sense in the same context as columns in the third case. Column contents follow on subsequent lines and must be indented relative to the column marker (vertical bar). Multiple column environments can exist on the same slide, as well as columns inside columns, although that is a rather strange use case.
-
-    Examples:
-    ```
-   [
-   Text before the columns
-
-   |30%
-     This is a narrow column on the left
-
-   |
-     This is a wide column on the right
- 
-   Text after the columns
-   ]
-
-   [
-   |1
-     First column
-
-   |4
-     Second column, which is 4 times as wide as the first
-   ]
-    ```
-    
-    ![Columns example](snapshot/snapshot6.png)
-
-## List
-Unnumbered list: `<marker><pause> <content>`
-Restarting numbered list: `<marker>.<pause> <content>`
-Resuming numbered list: `<marker>,<pause> <content>`
-Description list: `<marker>=<pause> <describee>=<description>` or `<marker>=<pause> <content>`
-
-    
-1. **Lists** are created using list item markers which are composed of a few characters:
-    - Start with `-` for a normal item, `*` for a highlighted one
-    - Add `.` or `,` for a numbered list, the difference being that if this is the first item of the current numbered list `,` will resume the counter from the pevious numbered list of the same depth. Or add `=` for a description list, where the describee will be separated from the description by a further `=`; if this is absent, the first word will be considered to be the describee. Adding none of these results in an unnumbered list.
-    - Add '+' for items you wish to be revealed in turn on the next frame of the slide.
-  
-    List items can contain lists themselves, multiple paragraphs etc. This is accomplished by indenting the contents of the list item relative to the marker.
-
-    Examples:
-    ```
-   [
-   Ordinary bullet list:
-
-   - bullet
-   - bullet
-   - more bullet
-   ]
-
-   [
-   Numbered list on a few levels, each item telling you what it will be numbered:
-
-   -. one
-   -, two
-     -, one
-     -. two
-       -. one
-   -. three
-     -, three
-     -, four
-   -. four
-   -, five
-     -. one
-   -. six
-     -. one
-   ]
-
-   [
-   Description list:
-
-   -=Apple=a fruit
-   -=Fruit with long name=another fruit
-   -=Potato vegetable
-   ]
-
-   [
-   List where items will be revealed one by one and highlighted when they appear:
-
-   *+ one
-   *+ more
-   *+ time
-   ]
-    ```
-    
-    ![List example (2)](snapshot/snapshot8.png)
-
-1. **Boxes** are created using round brackets and one of the symbols `*`, `!`. The box title follows this symbol on the same line. The contents follow on subsequent lines, indented relative to the opening bracket. The closing bracket must be on its own line and on the same level of indentation as the opening one.
-
-    Examples:
-    ```
-   (* Normal box
-      Box contents...
-      |45%
-        We can have columns inside the box
-      |45%
-        (although we need to make them narrower)
-   )
-
-    (! Alert box
-      Box contents...
-      - We also have a list
-      - Inside the box
-    )
-    ```
-    
-    ![Boxes example](snapshot/snapshot9.png)
 
 1. **Images** can be added individually or in strips or grids. PIL support is coming soon, which will allow images to be better aligned without distorsions in a grid.
 
