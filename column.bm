@@ -1,0 +1,19 @@
+[
+Text before the columns
+
+|30%
+  This is a narrow column on the left
+
+|
+  This is a wide column on the right
+
+Text after the columns
+]
+
+[
+|1
+  First column
+
+|4
+  Second column, which is 4 times as wide as the first
+]

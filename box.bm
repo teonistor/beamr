@@ -1,0 +1,15 @@
+[
+(* Normal box
+    Box contents...
+    |45%
+      We can have columns inside the box
+    |45%
+      (although we need to make them narrower)
+)
+
+(! Alert box
+  Box contents...
+  - We also have a list
+  - Inside the box
+)
+]

@@ -1,0 +1,53 @@
+---
+# Essential set up
+title: Macros Examples
+footer: counter title
+sectionToc: yes
+verbatim: minted
+
+# First we must tell pdflatex to include the tikz package for first example
+packages: tikz
+
+# Now we define our macros. Note Yaml multiline string syntax
+macro:
+  arrow: |
+    code = r'\tikz[baseline=-0.5ex]{ \draw [%s-%s] (0,0) --   (%s,0); }'
+    if arg[0] == '>':
+        latex(code % ('|', '>', arg[1]))
+    elif arg[0] == '<':
+        latex(code % ('<', '|', arg[1]))
+
+  script: |
+    import requests, re
+    a = requests.get(arg[0]).text
+    a = re.findall(r'<script[\s\S]*?<\/script>', a)
+    a = map(lambda s: '  '+s[:int(arg[2])], a[:int(arg[1])])
+    a = '\n{{ javascript\n' + '\n'.join(a) + '\n}}'
+    beamr(a)
+...
+
+Arrow macro
+-----------
+[ Little arrows
+%{arrow > 1em} %{arrow > 2em} %{arrow < 3em}
+
+%{arrow < 4em} %{arrow < 1em} %{arrow < 1em} %{arrow > 3em} %{arrow > 4em}
+
+%{arrow < 3em} %{arrow > 1em} %{arrow < 1em} %{arrow < 3em}
+]
+[ Big arrows
+%{arrow > 16em} %{arrow > 26em} %{arrow < 23em}
+
+%{arrow < 23em} %{arrow > 14em} %{arrow < 18em} %{arrow < 25em}
+]
+
+Script tag macro
+----------------
+[.20 Google scripts
+First 5 scripts from [https://google.com]
+%{script https://google.com 5 200}
+]
+[ BBC scripts
+First 3 scripts from [https://bbc.co.uk]
+%{script https://bbc.co.uk 3 150}
+]

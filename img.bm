@@ -1,0 +1,47 @@
+[ One image
+Below is an image of boats in the sunset, taken somewhere around Lymington Pier:
+
+~{boats}
+]
+
+[ Matrix
+~{house boats house
+  seven beach
+  house seven boats + }
+]
+
+[ Inline and grids
+Small images can be used in line: 1 2 3 4 5 6 ~{seven x1em} 8 9
+
+Now let's write the number 7 out of images of itself:
+
+~{seven seven seven seven
+  . . seven .
+  . seven . .
+  seven . . . + 30}
+]
+
+[ Horizontal strip
+~{house boats seven boats -}
+
+Of course, you can squeeze an image by specifying both dimensions:
+
+~{seven 4cmx2cm}
+]
+
+[ Vertical strip
+~{house boats house beach boats |}
+]
+
+[ Two vertical strips
+|15%
+ ~{ boats house seven house beach | 100}
+|
+ [>This slide presents you some text enclosed between two vertical image strips.<]
+|15%
+ ~{beach boats seven house beach | 100}
+]
+---
+# Remember to set the graphics path
+graphicspath: res
+...

@@ -1,0 +1,89 @@
+[ Tables 1
+*Small tables stay centred*
+
+|-------------------|
+| Dec || Bin || Hex |
+|-------------------|
+|  2  | 10    | 2   |
+|  18 | 10010 | 12  |
+|  31 | 11111 | 1F  |
+|-------------------|
+
+*Using justification makes them wide*
+
+|No|| Name |-Description|
+|---+------+------------|
+|1|Banana |Long, yellow, pitless fruit. [.(Ordinarily seen green-shaded in supermarkets, because supermarkets are greedy and want to sell you raw fruit.).]|
+|2| Apple |Round fruit comind in a variety of sizes and colours.|
+|3|Avocado|Pretentious fruit difficult to get right at the store. Nevertheless, my favourite.|
+]
+
+[ Tables 2
+*Tables in columns*
+[:]
+
+|
+  [>$ f(x) = x^2 - 5 $<]
+  
+  | $x$||<$f(x)$|
+  |-------------|
+  | -5 |  50    |
+  |  2 | -1     |
+  |  3 |  4     |
+  |  4 | 11     |
+  | 10 |  95    |
+|
+  [>$ g(y) = y^2 + 3y + 7 $<]
+  
+  | $y$||<$g(y)$|
+  |-------------|
+  | -5 | 17     |
+  |  2 | 17     |
+  |  3 | 25     |
+  |  4 | 35     |
+  | 10 |  137   |
+]
+
+[ Tables 3
+*Alignment works sensibly on its own*
+
+| Text      ||Integers||Decimal points||Decimal commas |
+|-------------------------------------------------|
+| Text will  |  31     |  3.14    |  2,718   |
+| by default |  24     |  49      |   -14    |
+|     be     | -150    |   -2.5   |  14,18   |
+|left-aligned|  3      |   22.4   |   ,281   |
+
+*You can have highlighting in cells*
+|--------+---------------------+-----|
+|| Name  |  ^Phone             | Age ||
+|--------+---------------------+-----|
+| *Peter*| [~999~]             | 17  |
+| _Anna_ |4321[-And footnotes-]| 25  |
+| **Bob**|  1234               | 22  | 
+
+]
+[ Tables 4
+  
+*Tables in lists*
+
+*+ I don't know why you would want to do this, but...
+-+ you can have tables inside lists if you're so inclined.
+
+  *.+ Like this one about colours:
+      |>Colour||Code |
+      |--------------|
+      |  Red  |\#FF0000|
+      |  Cyan |\#00FEFE|
+
+  *.+ Or this, about number bases:
+      |------------------|
+      | Dec|| ^Bin ||Hex |
+      |------------------|
+      |  2  | 10    | 2  |
+      |  18 | 10010 | 12 |
+      |  31 | 11111 | 1F |
+      |------------------|
+      
+[+]
+]

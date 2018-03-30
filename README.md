@@ -1,5 +1,5 @@
-# Example files for Py-Beams
+# Example files for Beamr
 
-This branch will contain full document example input files, which will also be illustrated on the project page [https://teonistor.github.io/py-beams/].
+These are the examples shown throughout the [Beamr user guide](https://teonistor.github.io/beamr/).
 
-Also check out the main branch [https://github.com/teonistor/py-beams/tree/master].
+The [advanced](https://github.com/teonistor/beamr/tree/examples/advanced) folder contains more complex examples.

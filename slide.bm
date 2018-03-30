@@ -1,0 +1,14 @@
+[ First slide
+  In this presentation we will be talking about slides.
+]
+[ Second slide
+  This is the second slide.
+  
+  It contains two paragraphs.
+]
+[.20 Third slide
+  The text on this slide will be 20% smaller than usual.
+]
+[
+  This slide has no title.
+]

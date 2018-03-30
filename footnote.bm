@@ -1,0 +1,13 @@
+[
+This presentation is very interesting[-As I mentioned in my _previous_ presentation-].
+
+This footnote[-24:This one-] has a label, which I can now use to refer to it again[-24:-]. You can even do that across different slides.
+
+If you need a colon in the footnote text you can give it an empty label[-:Meet at 15:30-].
+
+Beamr uses PLY[--plyman] for lexing and parsing.
+]
+---
+# Set bibliography file
+bib: res/bib
+...

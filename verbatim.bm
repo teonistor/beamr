@@ -1,0 +1,12 @@
+---
+verbatim: minted
+...
+[
+{{ "{" }}{c++ 
+  #include<bar>
+  int main() {
+    printf("is wider\n");
+  }
+  /* Or is it */
+}}
+]

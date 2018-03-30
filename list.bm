@@ -1,0 +1,85 @@
+[
+Ordinary bullet list:
+
+- bullet
+- bullet
+- more bullet
+]
+
+[
+Numbered list on a few levels, each item telling you what it will be numbered:
+
+-. one
+-, two
+  -, one
+  -. two
+    -. one
+-. three
+  -, three
+  -, four
+-. four
+-, five
+  -. one
+-. six
+  -. one
+]
+
+[
+Description list:
+
+-= Apple=a fruit
+-= Fruit with long name=another fruit
+-= Potato vegetable
+]
+
+[
+List where items will be revealed one by one and highlighted when they appear:
+
+*+ one
+*+ more
+*+ time
+]
+
+[... Complicated nested list
+
+-. one
+-, two
+  -, one
+  -. two
+      -. one
+-. three
+  -, three
+  -, four
+-. four
+-, five
+  -, five
+-. six
+  -. one
+- Bullet
+-. one
+  -, two
+-= Describee description description
+-, two
+  -, three
+  -. four
+      -, two
+      -. three
+-. three
+- Bullet
+-. one
+  -. one
+  - Bullet
+  -. one
+      -. one
+      -, two
+      -= Description list=this thing
+    -. two
+  -, two
+  -. three
+      -. one
+      - bullet
+      -. one
+      - bullet
+      -, two
+]
+  
