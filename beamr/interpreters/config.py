@@ -59,9 +59,10 @@ editor: %s
         'theme'     : 'Copenhagen',
         'scheme'    : 'beaver',
 
-        # Bibliography file, title for bibliography slide
-        'bib'     :  None,
-        'bibTitle': 'Bibliography',
+        # Bibliography file, style; title for bibliography slide
+        'bib'       :  None,
+        'bibStyle'  : 'plain',
+        'bibTitle'  : 'Bibliography',
 
         # Document class and used packages configuration
         'docclass': 'beamer',
@@ -72,18 +73,19 @@ editor: %s
                 'upquote',
                 'normalem,ulem',
                 'tabularx',
+                'dcolumn'
             ],
 
         # Paths where to search for images in the ~{ } construct
         'graphicspath': [
-               # Graphics path resolution: pdflatex automatically looks in the directory where it was called, but should it also look in the directory of the input file?
+                ''
             ],
 
         # Image file extensions for use in the ~{ } construct
         # Empty extension is necessary when file name is already given with extension.
         'imgexts': [
                 '', '.png', '.pdf', '.jpg', '.mps', '.jpeg', '.jbig2', '.jb2',
-                    '.PNG', '.PDF', '.JPG', '.JPEG', '.JBIG2', '.JB2' # As per https://tex.stackexchange.com/a/72939 - Sept 2017
+                    '.PNG', '.PDF', '.JPG', '.JPEG', '.JBIG2', '.JB2', '.eps' # As per https://tex.stackexchange.com/a/72939 - Sept 2017
             ],
 
         # Characters whose escaped/unescaped normal LaTeX use cases are to be swapped
@@ -114,6 +116,9 @@ editor: %s
         # Environment to use for verbatim
         'verbatim': 'listings',
 
+        # User macros will be placed here
+        'macro'   :  {},
+
         # User-configurable custom LaTeX code insertion points
         'packageDefPre'    : '',
         'outerPreamblePre' : '',
@@ -122,6 +127,9 @@ editor: %s
         'innerPreamblePost': '',
         'outroPre'         : '',
         'outroPost'        : '',
+
+        # Post-processing hook will, if required, contain arbitrary Python code to be executed on the final string
+        'postProcess'      : '',
 
         # Command sets used internally by listings/minted
         '~vbtmCmds': {
@@ -166,7 +174,15 @@ editor: %s
             },
 
         # TBC ascii arrow art et al
-        '~asciiArt': {},
+        '~asciiArt': {
+                '-->'  : r'\ensuremath{\rightarrow}',
+                '<->'  : r'\ensuremath{\leftrightarrow}',
+                '<--'  : r'\ensuremath{\leftarrow}',
+                '|->'  : r'\ensuremath{\mapsto}',
+                '==>'  : r'\ensuremath{\Rightarrow}',
+                '<=>'  : r'\ensuremath{\Leftrightarrow}',
+                '<=='  : r'\ensuremath{\Leftarrow}'
+            },
 
         # Commands for package preamble
         '~docclass': [r'\documentclass[%s]{%s}', r'\documentclass{%s}'],
@@ -183,12 +199,15 @@ editor: %s
         '~sectionToc'   : r'\AtBeginSection[]{\frametitle{%s}\tableofcontents[currentsection,currentsubsection,hideothersubsections,sectionstyle=show/shaded,subsectionstyle=show/show/shaded]}' + '\n',
         '~headerNoToc'  :  '\\setbeamertemplate{headline}{}\n',
 
+        # Command for graphics path
+        '~graphicspath' :  '\\graphicspath{%s}\n',
+
         # Commands for inner preamble
         '~titlePage':  '\\frame{\\titlepage}\n',
         '~tocPage'  : r'\frame{\frametitle{%s}\tableofcontents}' + '\n',
 
         # Commands for outro
-        '~bibPage'  : r'\frame{\frametitle{%s}\bibliographystyle{plain}\bibliography{%s}}' + '\n',
+        '~bibPage'  : r'\frame{\frametitle{%s}\bibliographystyle{%s}\bibliography{%s}}' + '\n',
 
         # Document wrapper commands
         '~docBegin' :  '\n\\begin{document}\n',
@@ -202,7 +221,7 @@ editor: %s
         '~sldEnd'            : '\n\\end{frame}\n',
 
         # Column wrapper commands
-        '~colBegin'  : '\\begin{columns}\n',
+        '~colBegin'  : '\\begin{columns}[totalwidth=\linewidth,t]\n',
         '~colEnd'    : '\\end{columns}',
         '~colMarker' : '\\column{%.3f\\textwidth}\n',
 
@@ -239,6 +258,32 @@ editor: %s
                 '\\subsection{ %s }\n',
                 '\\subsubsection{ %s }\n'
             ],
+
+        # Image frame commands:
+        '~image'     : {
+                'wh' : r'\includegraphics[width=%.3f%s,height=%.3f%s]{%s}',
+                'w-' : r'\includegraphics[width=%.3f%s]{%s}',
+                '-h' : r'\includegraphics[height=%.3f%s]{%s}',
+                '--' : r'\includegraphics[%s]{%s}'
+            },
+
+        # Org Table commands
+        '~orgTable'  : {
+                'align' : {
+                    '<' :  'l',
+                    '>' :  'r',
+                    '^' :  'c',
+                    '.' :  'D{.}{.}{-1}',
+                    ',' :  'D{,}{,}{-1}',
+                    '-' :  'X',
+                },
+                'begin'   : r'\begin{center}\begin{tabular}{%s}',
+                'beginX'  : r'\begin{tabularx}{\textwidth}{%s}',
+                'end'     : r'\end{tabular}\end{center}',
+                'endX'    : r'\end{tabularx}',
+                'multicol': r'\multicolumn{1}{c%s}{%s}',
+                'hBar'    :  '\n\\hline',
+            },
 
         # "Scissor" operator commands
         '~scissorSimple': r'{\setbeamercolor{background canvas}{bg=}\includepdf{%s}}' + '\n',

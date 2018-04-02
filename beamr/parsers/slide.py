@@ -23,6 +23,7 @@ def p_elem(t):
     '''elem : COMMENT
             | AUTORAW
             | ESCAPE
+            | ART
             | STRETCH
             | EMPH
             | CITATION

@@ -24,6 +24,7 @@ tokens = (
        'X',
        'QFILE',
        'FILE',
+       'DOT',
        'LF'
        )
 
@@ -86,6 +87,14 @@ def t_FILE(t):
     r'[^ \n]+'
     return t
 
-t_LF = r'\n'
+def t_DOT(t):
+    r'\.'
+    t.value = None
+    return t
+
+def t_LF(t):
+    r'\n+'
+    t.lexer.lineno += len(t.value)
+    return t
 
 lexer = lex.lex(debug=dbg.verbose, reflags=0)

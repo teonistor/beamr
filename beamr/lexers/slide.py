@@ -13,6 +13,7 @@ tokens = (
        'COMMENT',
        'AUTORAW',
        'ESCAPE',
+       'ART',
        'STRETCH',
        'EMPH',
        'CITATION',
@@ -34,7 +35,7 @@ tokens = (
 
 
 def t_AUTORAW(t):
-    r'\\[a-zA-Z]+(\{.*?\}|<.*?>|\[.*?\])*(?=[\s\\]|$)'
+    r'\\[a-zA-Z]+(\{.*?\}|<.*?>|\[.*?\])*(?=[^\]}>]|$)'
     t.value = beamr.interpreters.Text(t.value)
     return t
 
@@ -43,15 +44,20 @@ def t_ESCAPE(t):
     t.value = beamr.interpreters.Escape(t.value)
     return t
 
+def t_ART(t):
+    r'-->|<->|<--|\|->|<-\||==>|<=>|<==' # e.g. -->, <=>
+    t.value = beamr.interpreters.AsciiArt(t.value)
+    return t
+
 def t_STRETCH(t):
-    r'\[(?P<STRETCH_FLAG_S>[<>_^:+*~.]{1,3})((?P<STRETCH_TXT>.*?[^\\])(?P<STRETCH_FLAG_F>(?P=STRETCH_FLAG_S)|[<>]))?\]'
+    r'\[(?P<STRETCH_FLAG_S>[<>_^:+*~.]{1,3})((?P<STRETCH_TXT>.*?[^\\])(?P<STRETCH_FLAG_F>(?P=STRETCH_FLAG_S)|[<>]))??\]'
     gd = t.lexer.lexmatch.groupdict()
     t.value = beamr.interpreters.Stretch(
         gd['STRETCH_FLAG_S'], gd['STRETCH_FLAG_F'], gd['STRETCH_TXT'])
     return t
 
 def t_EMPH(t):
-    r'(?P<EMPH_FLAG>[*_~]{1,2})(?P<EMPH_TXT>[\S](.*?[^\s\\])?)(?P=EMPH_FLAG)' # e.g. *Bold text*, ~Strikethrough text~
+    r'(?P<EMPH_FLAG>[*_]{1,2})(?P<EMPH_TXT>[\S](.*?[^\s\\])?)(?P=EMPH_FLAG)' # e.g. *Bold text*, ~Strikethrough text~
     gd = t.lexer.lexmatch.groupdict()
     t.value = beamr.interpreters.Emph(
         gd['EMPH_FLAG'], gd['EMPH_TXT'])
@@ -130,11 +136,11 @@ def t_VERBATIM(t):
 def t_MACRO(t):
     r'%{[\s\S]+?}'
     _trackLineNo(t.lexer, t.value, False)
-    t.value = beamr.interpreters.Macro(t.value)
+    t.value = beamr.interpreters.Macro(t.value[2:-1])
     return t
 
 def t_BOX(t):
-    r'\n(?P<BOX_INDENT> *)\((?P<BOX_KIND>\*|!|\?)(?P<BOX_TITLE>.+)(?P<BOX_CONTENT>[\s\S]+?)\n(?P=BOX_INDENT)\)'
+    r'\n(?P<BOX_INDENT> *)\((?P<BOX_KIND>\*|!|\?)(?P<BOX_TITLE>.*)(?P<BOX_CONTENT>[\s\S]+?)\n(?P=BOX_INDENT)\)'
     _trackLineNo(t.lexer, t.value, False)
     gd = t.lexer.lexmatch.groupdict()
     t.value = beamr.interpreters.Box(

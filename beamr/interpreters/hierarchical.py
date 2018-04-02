@@ -3,7 +3,7 @@ Created on 1 Feb 2018
 
 @author: Teodor Gherasim Nistor
 '''
-from beamr.debug import debug, warn
+from beamr.debug import debug, warn, err
 from beamr.lexers import docLexer, slideLexer
 from beamr.parsers import docParser, slideParser
 from beamr.interpreters import Config, VerbatimEnv, TableEnv
@@ -29,7 +29,6 @@ class Hierarchy(object):
 
 
 class Document(Hierarchy):
-    simpleOuterPreambleCmds = ['theme', 'scheme', 'author', 'institute']
 
     def __init__(self, txt):
         txt = '\n' + txt
@@ -46,7 +45,8 @@ class Document(Hierarchy):
         Config.resolve()
         debug('Final config', Config.effectiveConfig)
 
-        # Post-factum list, column, and verbatim environment resolution
+        # Post-factum macro, list, column, and verbatim environment resolution
+        Macro.resolve()
         ListItem.resolve(self.children)
         Column.resolve(self.children)
         VerbatimEnv.resolve()
@@ -60,10 +60,16 @@ class Document(Hierarchy):
 
         # Outer preamble commands
         outerPreamble = Config.getRaw('outerPreamblePre')
+        titleNonBlank = False
 
-        for cmd in self.simpleOuterPreambleCmds:
+        for cmd in ['theme', 'scheme']:
             cmdVal = Config.getRaw(cmd)
             if cmdVal:
+                outerPreamble += Config.get('~'+cmd)(cmdVal)
+        for cmd in ['author', 'institute']:
+            cmdVal = Config.getRaw(cmd)
+            if cmdVal:
+                titleNonBlank = True
                 outerPreamble += Config.get('~'+cmd)(cmdVal)
 
         # Figure out what date to specify
@@ -86,6 +92,19 @@ class Document(Hierarchy):
             footerVal = Config.getRaw('~footerCounter') + titleVal
         outerPreamble += Config.get('~title')((footerVal, titleVal))
 
+        if titleVal or dateVal:
+            titleNonBlank = True
+
+        # Add graphics paths
+        gpaths = ''
+        for p in Config.getRaw('graphicspath'):
+            if p:
+                if p[-1] != '/':
+                    p += '/'
+                gpaths += '{' + p + '}'
+        if gpaths:
+            outerPreamble += Config.get('~graphicspath')(gpaths)
+
         # Place tables of contents where necessary
         if Config.getRaw('sectionToc') == True:
             outerPreamble += Config.get('~sectionToc')(Config.getRaw('tocTitle'))
@@ -97,7 +116,8 @@ class Document(Hierarchy):
         # Inner preamble commands
         innerPreamble = Config.getRaw('innerPreamblePre')
         innerPreamble += VerbatimEnv.preambleDefs
-        if Config.getRaw('titlePage') == True:
+        titlePage = Config.getRaw('titlePage')
+        if titlePage and titleNonBlank or titlePage == 'force':
             innerPreamble += Config.getRaw('~titlePage')
         if Config.getRaw('toc') == True:
             innerPreamble += Config.get('~tocPage')(Config.getRaw('tocTitle'))
@@ -108,7 +128,10 @@ class Document(Hierarchy):
 
         bib = Config.getRaw('bib')
         bibCmd = Config.getRaw('~bibPage')
-        outro += bibCmd % (Config.getRaw('bibTitle'), bib) if bib and bibCmd else ''
+        if bib and bibCmd:
+            outro += bibCmd % (Config.getRaw('bibTitle'),
+                               Config.getRaw('bibStyle'),
+                               bib)
 
         outro += Config.getRaw('outroPost')
 
@@ -156,10 +179,14 @@ class Slide(Hierarchy):
                          Config.getRaw('~sldEnd'))
 
         # Hierarchical children will have added themselves to the parsing queue which we process now
-        while len(self.parsingQ) > 0:
-            self.parsingQ.pop()()
+        self.processQ()
 
         docLexer.lineno = nextlineno
+
+    @classmethod
+    def processQ(cls):
+        while len(cls.parsingQ) > 0:
+            cls.parsingQ.pop()()
 
 
 class ListItem(Hierarchy):
@@ -347,7 +374,7 @@ class OrgTable(TableEnv):
         nextlineno = slideLexer.nextlineno
 
         # Regular expression for separating table cells from a row (based on capturing groups)
-        r = re.compile(r'\|(\|?)((?:\\\||[^\|\n])*)')
+        r = re.compile(r'\|(\|?) *([<>^.,-]?)((?:\\\||[^\|\n])*)')
         # Regular expression for detecting horizontal bar lines
         b = re.compile(r'\|{1,2}(-+(\+-)*)+\|{1,2}')
 
@@ -375,7 +402,7 @@ class OrgTable(TableEnv):
                     enumLine = [el for el in enumerate(r.findall(line))]
 
                     # Iterate over cells...
-                    for j, (bar, text) in enumLine:
+                    for j, (bar, align, text) in enumLine:
 
                         # First visit this far to the right. Note if vertical bar is needed
                         if len(vBars) <= j:
@@ -384,16 +411,13 @@ class OrgTable(TableEnv):
                         # Not beyond right edge. Process contents
                         if j+1 < len(enumLine):
 
-                            # First visit this far to the right. Note alignment based on blanks
+                            # First visit this far to the right. Note alignment, if any
                             if len(aligns) <= j:
-                                # Anti-stupid: Empty cell on first line, e.g. 3 consecutive |s. It's really hard to tell what the intention was
-                                if not text:
-                                    aligns += 'c'
+                                aligns += align or 'A'
 
-                                elif text[0] == ' ':
-                                    aligns += 'c' if text[-1] == ' ' else 'r'
-                                else:
-                                    aligns += 'l' if text[-1] == ' ' else 'X'
+                            # Not first visit this far. Alignment symbol is actually part of the contents
+                            else:
+                                text = align + text
 
                             # Enqueue contents for parsing and addition to current matrix row
                             self.qHelper(arr[i], text.replace(r'\|', '|'), lineno)
@@ -412,6 +436,47 @@ class OrgTable(TableEnv):
             slideLexer.lineno = lineno
             arr.append(Hierarchy(slideParser.parse(text, slideLexer)))
         Slide.parsingQ.insert(0, innerFunc)
+
+
+class Macro(Hierarchy):
+    macros = []
+
+    def __init__(self, txt):
+        self.txt = txt.split()
+        self.lineno = slideLexer.lineno
+        nextlineno = slideLexer.nextlineno
+        slideLexer.lineno = nextlineno
+        self.rng = '%d-%d' % (self.lineno, nextlineno)
+
+        self.macros.append(self)
+        super(Macro, self).__init__([])
+
+    @classmethod
+    def resolve(cls):
+        for macro in cls.macros:
+
+            # Callback for user code to call if Beamr parsing is desired on macro result
+            def beamr(s):
+                slideLexer.lineno = macro.lineno
+                super(Macro, macro).__init__(slideParser.parse(s, slideLexer))
+
+                # Need to redo this manually as slide-side processing will have finished at this point
+                Slide.processQ()
+
+            # Callback for user code to call if macro results directly in LaTeX code
+            def latex(s):
+                super(Macro, macro).__init__([], s)
+
+            # Run user code
+            code = Config.getRaw('macro', macro.txt[0])
+            if not code:
+                warn('Unknown macro', macro.txt[0], range=macro.rng)
+
+            try:
+                exec(code, {'beamr': beamr, 'latex': latex, 'arg': macro.txt[1:], 'debug': debug})
+            except Exception as e:
+                err('An error occurred during macro', macro.txt[0],'execution:', e, range=macro.rng)
+                debug('Macro', macro.txt[0],'error:', repr(e), range=macro.rng)
 
 
 class Box(Hierarchy):

@@ -90,7 +90,9 @@ def main():
 
             # Parse document
             doc = Document(sys.stdin.read())
-            tex = str(doc)
+            dic = {'s': str(doc)}
+            exec(Config.getRaw('postProcess'), dic)
+            tex = dic['s']
 
             # Run pdflatex on obtained tex source
             if pdflatex:

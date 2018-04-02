@@ -17,8 +17,11 @@ def p_main(t):
 def p_elem(t):
     '''files : files FILE
              | files QFILE
+             | files DOT
              | FILE
              | QFILE
+             | DOT
+             | files LF DOT
              | files LF QFILE
              | files LF FILE'''
     if len(t) == 2:
@@ -87,12 +90,12 @@ def p_dim(p):
 def p_error(p):
     # TODO instead of discarding bad tokens, consider them file names, or pieces thereof, and return to lexer in a sensible fashion
     # BUT currently this fixes empty lines in image environment automagically so...
-    if p:
-        debug.warn('Syntax error in Image environment at "', p.value, '". Images or parameters may be missing from output.')
+    if p and p.value:
+        debug.warn('Syntax error in Image Frame: invalid token', p.value, range=p.lexer.lineno)
         global parser
         parser.errok()
     else:
-        debug.warn('Syntax error at the end of Image environment.')
+        debug.warn('Syntax error at the end of Image Frame', range=p.lexer.lineno)
 
 def _optional_format(a, b):
     if a[2]:
