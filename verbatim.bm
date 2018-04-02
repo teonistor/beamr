@@ -2,7 +2,7 @@
 verbatim: minted
 ...
 [
-{{ "{" }}{c++ 
+{{c++
   #include<bar>
   int main() {
     printf("is wider\n");

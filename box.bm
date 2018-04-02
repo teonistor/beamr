@@ -1,15 +1,19 @@
 [
 (* Normal box
-    Box contents...
-    |45%
-      We can have columns inside the box
-    |45%
-      (although we need to make them narrower)
+  |65%
+    We can have columns inside the box
+  |
+    This right-side column is narrower
 )
 
 (! Alert box
-  Box contents...
-  - We also have a list
-  - Inside the box
+  What can exist inside a box:
+  - Columns
+  - List
+  - Anything
+)
+
+(? Example box
+  $n^2 + 2n + 1$
 )
 ]
