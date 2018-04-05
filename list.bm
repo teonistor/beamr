@@ -44,8 +44,8 @@ List where items will be revealed one by one and highlighted when they appear:
 
 -. one
 -, two
-  -, one
-  -. two
+  -. one
+  -, two
       -. one
 -. three
   -, three

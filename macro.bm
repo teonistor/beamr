@@ -12,16 +12,16 @@ packages: tikz
 macro:
   arrow: |
     code = r'\tikz[baseline=-0.5ex]{ \draw [%s-%s] (0,0) --   (%s,0); }'
-    if arg[0] == '>':
-        latex(code % ('|', '>', arg[1]))
-    elif arg[0] == '<':
-        latex(code % ('<', '|', arg[1]))
+    if arg[1] == '>':
+        latex(code % ('|', '>', arg[2]))
+    elif arg[1] == '<':
+        latex(code % ('<', '|', arg[2]))
 
   script: |
     import requests, re
-    a = requests.get(arg[0]).text
+    a = requests.get(arg[1]).text
     a = re.findall(r'<script[\s\S]*?<\/script>', a)
-    a = map(lambda s: '  '+s[:int(arg[2])], a[:int(arg[1])])
+    a = map(lambda s: '  '+s[:int(arg[3])], a[:int(arg[2])])
     a = '\n{{ javascript\n' + '\n'.join(a) + '\n}}'
     beamr(a)
 ...
