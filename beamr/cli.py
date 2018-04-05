@@ -91,7 +91,8 @@ def main():
             # Parse document
             doc = Document(sys.stdin.read())
             dic = {'s': str(doc)}
-            exec(Config.getRaw('postProcess'), dic)
+            ppc = '\n'.join(Config.getRaw('postProcess'))
+            exec(ppc, dic)
             tex = dic['s']
 
             # Run pdflatex on obtained tex source

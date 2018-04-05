@@ -59,13 +59,14 @@ editor: %s
         'theme'     : 'Copenhagen',
         'scheme'    : 'beaver',
 
-        # Bibliography file, style; title for bibliography slide
-        'bib'       :  None,
+        # Bibliography file, contents, style; title for bibliography slide
+        'bibFile'   :  None,
+        'bib'       :  [],
         'bibStyle'  : 'plain',
         'bibTitle'  : 'Bibliography',
 
         # Document class and used packages configuration
-        'docclass': 'beamer',
+        'docclass': 'xcolor={table,rgb,usenames,svgnames},beamer',
         'packages': [
                 'utf8,inputenc',
                 'T1,fontenc',
@@ -120,16 +121,17 @@ editor: %s
         'macro'   :  {},
 
         # User-configurable custom LaTeX code insertion points
-        'packageDefPre'    : '',
-        'outerPreamblePre' : '',
-        'outerPreamblePost': '',
-        'innerPreamblePre' : '',
-        'innerPreamblePost': '',
-        'outroPre'         : '',
-        'outroPost'        : '',
+        'docclassPre'      : [],
+        'packageDefPre'    : [],
+        'outerPreamblePre' : [],
+        'outerPreamblePost': [],
+        'innerPreamblePre' : [],
+        'innerPreamblePost': [],
+        'outroPre'         : [],
+        'outroPost'        : [],
 
         # Post-processing hook will, if required, contain arbitrary Python code to be executed on the final string
-        'postProcess'      : '',
+        'postProcess'      : [],
 
         # Command sets used internally by listings/minted
         '~vbtmCmds': {
@@ -204,13 +206,13 @@ editor: %s
 
         # Commands for inner preamble
         '~titlePage':  '\\frame{\\titlepage}\n',
-        '~tocPage'  : r'\frame{\frametitle{%s}\tableofcontents}' + '\n',
+        '~tocPage'  : r'\frame{\frametitle{%s}\tableofcontents}''\n',
 
         # Commands for outro
-        '~bibPage'  : r'\frame{\frametitle{%s}\bibliographystyle{%s}\bibliography{%s}}' + '\n',
+        '~bibPage'  : r'\frame{\frametitle{%s}\bibliographystyle{%s}\bibliography{%s}}''\n',
 
         # Document wrapper commands
-        '~docBegin' :  '\n\\begin{document}\n',
+        '~docBegin' :  '\n'r'\begin{document}''\n'r'\renewcommand*{\arraystretch}{1.25}''\n',
         '~docEnd'   :  '\n\\end{document}\n',
 
         # Slide wrapper commands
@@ -299,9 +301,11 @@ editor: %s
     # Store command-line config for updating after document config has been loaded
     cmdlineConfig = {}
 
-    def __init__(self, txt):
+    def __init__(self, txt, lineno, nextlineno, lexer):
         self.parsedConfig = yaml.load_all(txt)
+        self.rng = '%d-%d' % (lineno + 1, nextlineno)
         self.__class__.docConfig.append(self)
+        lexer.lineno = nextlineno
 
     @classmethod
     def resolve(cls):
@@ -309,23 +313,28 @@ editor: %s
 
         # Config from input file
         while len(cls.docConfig):
+            thisConfig = cls.docConfig.pop(0)
             try:
-                for stub in cls.docConfig.pop(0).parsedConfig:
-                    configStubs.append(stub)
-            except: # If there was bad Yaml
-                pass
+                for stub in thisConfig.parsedConfig:
+                    if isinstance(stub, dict):
+                        configStubs.append(stub)
+            except Exception as e: # If there was bad Yaml
+                warn('Bad configuration block:', e, range=thisConfig.rng)
 
         # Config from user config file
         try:
             with open(cls.userConfigPath, 'r') as cf:
-                for stub in yaml.load_all(re.sub( # Get rid of text outside Yaml markers
-                        r'(^|\n\.\.\.)[\s\S]*?($|\n---)',
-                        '\n---',
-                        '\n' + cf.read()
-                    )):
-                    if stub:
-                        configStubs.append(stub)
-        except:
+                try:
+                    for stub in yaml.load_all(re.sub( # Get rid of text outside Yaml markers
+                            r'(^|\n\.\.\.)[\s\S]*?($|\n---)',
+                            '\n---',
+                            '\n' + cf.read()
+                        )):
+                        if isinstance(stub, dict):
+                            configStubs.append(stub)
+                except Exception as e: # If there was bad Yaml
+                    warn('Bad user configuration file:', e)
+        except: # If file is nonexistent or unreadable
             pass
 
         # Update effective config above with all these

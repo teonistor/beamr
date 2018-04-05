@@ -16,6 +16,7 @@ def p_main_notext(t):
             | main HEADING
             | main SLIDE
             | main SCISSOR
+            | main MACRO
             | main YAML
             | nil'''
     if len(t) > 2:
