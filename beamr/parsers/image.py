@@ -88,8 +88,8 @@ def p_dim(p):
 
 
 def p_error(p):
-    # TODO instead of discarding bad tokens, consider them file names, or pieces thereof, and return to lexer in a sensible fashion
-    # BUT currently this fixes empty lines in image environment automagically so...
+    # Currently this fixes empty lines in image environment automagically, though instead of
+    # discarding bad tokens one could try returning them as file names or something
     if p and p.value:
         debug.warn('Syntax error in Image Frame: invalid token', p.value, range=p.lexer.lineno)
         global parser
@@ -98,6 +98,7 @@ def p_error(p):
         debug.warn('Syntax error at the end of Image Frame', range=p.lexer.lineno)
 
 def _optional_format(a, b):
+    'Helper for transparently formatting relative dimensions'
     if a[2]:
         return (a[0], a[1] % b)
     else:

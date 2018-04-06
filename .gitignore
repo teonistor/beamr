@@ -7,3 +7,4 @@
 *_parsetab.py
 testenv-*
 dist/
+pylintrc

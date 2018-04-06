@@ -7,7 +7,7 @@ Created on 6 Feb 2018
 from __future__ import division
 import os.path
 import re
-from beamr.lexers import docLexer, imageLexer, slideLexer
+from beamr.lexers import imageLexer
 from beamr.parsers import imageParser
 from beamr.debug import debug, warn
 
@@ -15,6 +15,14 @@ from beamr.debug import debug, warn
 class Text(object):
     
     def __init__(self, txt, lineno, nextlineno, lexer, **kw):
+        '''
+        Record text parameters and advence lexer. kw takes any additional
+        parameters required by sbuclasses
+        :param txt: Text itself
+        :param lineno: Line number at the beginning
+        :param nextlineno: Line number at the end
+        :param lexer: Lexer being used
+        '''
         self.txt = txt
         self.lineno = lineno
         self.nextlineno = nextlineno
@@ -23,18 +31,23 @@ class Text(object):
         lexer.lineno = nextlineno
 
     def __str__(self):
+        'The string form of simple text is itself'
         return self.txt
 
 
 class Comment(Text):
     def __str__(self):
+        '''Add LaTeX comment in front of the text of this comment,
+        specifying line number in originating file'''
         debug('Comment ', self.txt, range=self.lineno)
         from beamr.interpreters import Config
-        return Config.get('~comment')(self.txt)
+        return Config.get('~comment')((self.lineno, self.txt[1:]))
 
 
 class Escape(Text):
     def __str__(self):
+        '''Return escaped character alone, except if it is a hash,
+        in which case preserve the escaping backslash'''
         debug('Escape', self.txt, range=self.lineno)
         if self.txt == r'\#':
             return self.txt
@@ -43,12 +56,15 @@ class Escape(Text):
 
 class AsciiArt(Text):
     def __str__(self):
+        'Return the corresponding command from config'
         from beamr.interpreters import Config
         return Config.getRaw('~asciiArt', self.txt) or ''
 
 
 class Antiescape(Text):
     def __str__(self):
+        '''If this symbol exists in the antiescape string in the config, put
+        a backslash in front; otherwise return the symbol as is'''
         from beamr.interpreters.config import Config
         if self.txt in Config.getRaw('antiescape'):
             return '\\' + self.txt
@@ -59,7 +75,9 @@ class Antiescape(Text):
 class Citation(Text):
     def __str__(self):
         from beamr.interpreters.config import Config
-        if Config.getRaw('bib'):
+
+        # Check that there exists a source of citations
+        if Config.getRaw('bib') or Config.getRaw('bibFile'):
             opts = self.kw['opts']
             if opts:
                 return Config.get('~citeOpts')((opts, self.txt))
@@ -72,14 +90,19 @@ class Citation(Text):
 
 class Url(Text):
     def __str__(self):
+        'Wrap this URL in the URL command from config'
         from beamr.interpreters.config import Config
-        return Config.get('~url')(self.txt)
+
+        # 'txt' is the target, while text is the 'text' to be displayed
+        text = self.kw['text'] or self.txt
+        return Config.get('~url')((self.txt, text))
 
 
 class Heading(Text):
     usedMarkers = []
 
     def __str__(self):
+        'Find the depth of this heading and return corresponding LaTeX command'
         txt = self.txt.strip().splitlines()
         marker = txt[1][0]
 
@@ -115,9 +138,9 @@ class ImageEnv(Text):
             except ImportError as e:
                 self.__class__.pilErr = e
 
-    # Helper method to check the validity of a file as best as possible under current configuration
     @classmethod
     def checkFile(cls, file):
+        'Check the validity of a file as best as possible under current configuration'
         if cls.pilImage:
             try:
                 cls.pilImage.open(file)
@@ -127,8 +150,8 @@ class ImageEnv(Text):
         cls.pilWarn()
         return os.path.isfile(file)
 
-    # Helper method to recurst through file paths and extension until a file is found
     def resolveFile(self, file):
+        'Recurse through file paths and extensions until a file is found and return its full path'
         if file and file != '.':
             from beamr.interpreters import Config
             for path in Config.getRaw('graphicspath'):
@@ -140,9 +163,11 @@ class ImageEnv(Text):
             warn('Image Frame: Could not find file', file, range=self.lineno)
         return None
 
-    # Get image dimensions, if known and obtainable
     @classmethod
     def getDims(cls, file):
+        '''Obtain and return image dimensions.
+        If file not given or not openable, return None
+        If file given but PIL unavailable, return dummy dimensions (1,1)'''
         if file:
             if cls.pilImage:
                 try:
@@ -153,14 +178,15 @@ class ImageEnv(Text):
             return (1,1)
         return None
 
-    # Warn only once about the absence of PIL package
     @classmethod
     def pilWarn(cls):
+        'Warn only once about the absence of PIL package'
         if cls.pilErr:
             warn('Image Frame:', cls.pilErr, 'Falling back to basic grid. Some images may be distorted.')
             cls.pilErr = None
 
     def __str__(self):
+        'Parse and process contents of this image frame and return the LaTeX commands to generate it if no errors occur'
         imageLexer.lineno = self.lineno
         self.lineno = '%d-%d' % (self.lineno, self.nextlineno)
 
@@ -180,6 +206,13 @@ class ImageEnv(Text):
 
         # One image...
         def singleImage(dims, file, makeHspace=False, implicitDims=r'width=\textwidth'):
+            '''
+            Return the LaTeX command to insert this one image
+            :param dims: Image dimensions, as a tuple of optional tuples of numbers and units
+            :param file: File name or path
+            :param makeHspace: Whether to return command for a horizontal space instead if file is None
+            :param implicitDims: Dimensions to be used instead if all tuples in dims are None
+            '''
             if not file:
                 if makeHspace and dims[0]:
                     return r'\hspace{%.3f%s}' % dims[0]
@@ -200,14 +233,20 @@ class ImageEnv(Text):
         # Multi image...
 
         def vStrip(dims, files):
-            # Flatten into a vertical list
+            'Flatten files matrix into a vertical list (a list of one-item lists)'
             return grid(dims, [[file] for line in files for file in line], False)
 
         def hStrip(dims, files):
-            # Flatten into a horizontal list
+            'Flatten files matrix into a horizontal list (a list of one list of all items)'
             return grid(dims, [[file for line in files for file in line]], True)
 
         def grid(dims, files, implicitFillWidth=True):
+            '''
+            Process a grid of images and return LaTeX commands that create it
+            :param dims: Overall dimensions of the grid
+            :param files: Matrix of file names
+            :param implicitFillWidth: Whether to use full width if dimensions are None (default); otherwise use full height
+            '''
             safe = Config.getRaw('safe')
             imageDims = []
 
@@ -302,7 +341,7 @@ class ImageEnv(Text):
 
 class PlusEnv(Text):
     def __str__(self):
-        # TODO
+        '# TODO'
         warn('Plus integration not yet implemented', range=self.lineno+1)
         return ''
 
@@ -345,6 +384,14 @@ class VerbatimEnv(Text):
     preambleDefs = ''
 
     def __init__(self, txt, lineno, nextlineno, lexer, head, **kw):
+        ''' Remember head and body of Verbatim environment and assign unique identifier
+        based on occurrence count
+        :param txt: Body (code contents) of environment
+        :param head: Head (language specification) of environment
+        :param lineno: Line number at beginning
+        :param nextlineno: Line number at end
+        :param lexer: Lexer instance in use
+        '''
         super(VerbatimEnv, self).__init__(txt, lineno, nextlineno, lexer, **kw)
         self.head = head
         self.body = txt
@@ -362,6 +409,9 @@ class VerbatimEnv(Text):
 
     @classmethod
     def resolve(cls):
+        '''Create each code listing in a box at the beginning of the document, so
+        they can more easily be included in slides
+        Update each in-document instance with appropriate insertion command'''
         if cls.count:
 
             # Ensure proper package name is given

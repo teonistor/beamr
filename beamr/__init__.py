@@ -1,3 +1,6 @@
+
+# Setup & usage content helpers
+
 cli_name = 'beamr'
 
 setup_arg = {

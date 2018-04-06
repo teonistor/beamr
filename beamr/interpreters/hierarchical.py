@@ -15,23 +15,37 @@ class Hierarchy(object):
 
     parsingQ = deque()
 
-    def __init__(self, lexer, nextlineno, **kw):
+    def __init__(self, lexer, lineno, nextlineno, **kw):
+        'Assign empty contents, enqueue lateInit for later execution, then move lexer line number'
+        self.genericInit(lineno, nextlineno)
+
+        def innerFunc():
+            self.lateInit(lineno=lineno, nextlineno=nextlineno, **kw)
+
+        self.enQ(innerFunc)
+        lexer.lineno = nextlineno
+
+    def genericInit(self, lineno, nextlineno):
+        'Assign empty contents and generate opoening and closing comments'
         self.children = []
         self.before = ''
         self.after = ''
         self.inter = ''
 
-        def innerFunc():
-            self.lateInit(nextlineno=nextlineno, **kw)
-
-        self.enQ(innerFunc)
-        lexer.lineno = nextlineno
+        explainRng = '%s from lines %d-%d' % (
+                self.__class__.__name__,
+                lineno, nextlineno
+            )
+        self.explainBefore = '%%%%%%%%%% Begin ' + explainRng + ' %%%%%%%%%%\n'
+        self.explainAfter  = '%%%%%%%%%% End '   + explainRng + ' %%%%%%%%%%\n'
 
     def lateInit(self, **kw):
-        'Dummy late initialisation for an empty hierarchy'
+        'Dummy late initialisation for an empty hierarchy. To be overridden by subclasses'
         pass
 
     def __str__(self):
+        '''Stringify hierarchy by recursively stringifying children and
+        concatenating results with before, after, inter appropriately'''
         s = self.before
         for c in self.children:
             s += str(c) + self.inter
@@ -53,9 +67,12 @@ class Hierarchy(object):
 class Document(Hierarchy):
 
     def __init__(self, txt, name=None):
+
+        # Hack to simplify some lexer regexs
         txt = '\n' + txt
         docLexer.lineno = 0
 
+        # Replace tabs with 4 spaces and warn about them
         i = txt.find('\t')
         if i > -1:
             txt = txt.replace('\t','    ')
@@ -165,12 +182,19 @@ class Document(Hierarchy):
 
         outro += '\n'.join(Config.getRaw('outroPost'))
 
+        # Remember these blocks of code for use later in __str__()
         self.before = packageDef + outerPreamble + Config.getRaw('~docBegin') + innerPreamble
         self.after = outro + Config.getRaw('~docEnd')
         self.inter = ''
 
     @staticmethod
     def splitCmd(cmdTemplate, content):
+        '''
+        Chose from an optionful and optionless version of a command
+        e.g. \foo{content} vs \foo[opts]{content}
+        :param cmdTemplate: Tuple of optionful and optionless versions
+        :param content: Comma-separated list of options, the last (possibly only) one being the content
+        '''
         i = content.rfind(',')
         if i > -1:
             return cmdTemplate[0] % (content[:i], content[i+1:]) + '\n'
@@ -179,6 +203,11 @@ class Document(Hierarchy):
 
     @staticmethod
     def parseStrImmediate(s):
+        '''
+        Expedite the lex-parse-interpret cycle of a substring, using the
+        slide parser; return the stringified resulting tree
+        :param s: Substring to be parsed
+        '''
         slideLexer.lineno = 1
         arr = slideParser.parse(s, slideLexer)
         Hierarchy.processQ()
@@ -187,9 +216,27 @@ class Document(Hierarchy):
 
 class Slide(Hierarchy):
 
-    def __init__(self, title, opts, content, lexer, lineno, nextlineno):
+    def __init__(self, title, opts, plain, align, bg, bgUp, content, lexer, lineno, nextlineno):
+        '''
+        Parse slide title and contents, remember other attributes, advance lexer line number
+        :param title: Slide title
+        :param opts: Break/shrink option
+        :param plain: Decoration removal option
+        :param align: Vertical alignment option
+        :param bg: Background image path
+        :param bgUp: Background stretch opton
+        :param content: Slide content
+        :param lexer: Lexer instance used
+        :param lineno: Line number at the beginning of slide
+        :param nextlineno: Line number at the end of slide
+        '''
         self.opts = opts
-        self.lineno = lineno + 1
+        self.plain = plain
+        self.align = align
+        self.bg = bg
+        self.bgUp = bgUp
+        self.lineno = lineno + 1 # Slide regex starts with \n
+        self.genericInit(self.lineno, nextlineno)
         lexer.lineno = nextlineno
 
         slideLexer.lineno = lineno + 1
@@ -201,29 +248,55 @@ class Slide(Hierarchy):
         Hierarchy.processQ()
 
     def __str__(self):
+        'Stringify slide tree'
         title = ''.join(map(lambda x: str(x), self.title))
 
-        # Normal begin/end
-        self.before = Config.get('~sldBeginNormal')(title)
-        self.after = Config.getRaw('~sldEnd')
-        self.inter = ''
+        # Figure out necessary options and put them here:
+        outerOpts = []
+        innerOpts = []
 
-        # Add breaks or shrink if applicable
+        # Clear decorations?
+        if self.plain:
+            outerOpts.append(Config.getRaw('~sldOptsOut', 'plain'))
+            innerOpts.append(Config.getRaw('~sldOptsIn', 'plain'))
+
+        # Top/bottom alignment?
+        if self.align:
+            innerOpts.append(Config.getRaw('~sldOptsIn', 'align' + self.align))
+
+        # Auto break or shrink?
         if len(self.opts) > 0:
             if self.opts[0] == '.':
                 if self.opts == '...':
-                    self.before = Config.get('~sldBeginBreak')(title)
+                    innerOpts.append(Config.getRaw('~sldOptsIn', 'break'))
                 elif len(self.opts) == 1:
-                    self.before = Config.get('~sldBeginShrinkAuto')(title)
+                    innerOpts.append(Config.getRaw('~sldOptsIn', 'shrinkA'))
                 else:
                     try:
                         float(self.opts[1:])
-                        self.before = Config.get('~sldBeginShrink')((self.opts[1:], title))
+                        innerOpts.append(Config.get('~sldOptsIn', 'shrink')(self.opts[1:]))
                     except:
                         warn('Slide title: Invalid shrink specifier:', self.opts[1:], range=self.lineno)
-                        self.before = Config.get('~sldBeginShrinkAuto')(title)
+                        innerOpts.append(Config.getRaw('~sldOptsIn', 'shrinkA'))
             else:
                 warn('Slide title: Invalid option:', self.opts, range=self.lineno)
+
+        # Background?
+        if self.bg:
+            outerOpts.append(Config.get('~sldOptsOut',
+                             'bgH' if self.bgUp else 'bgW')(
+                             self.bg.strip()))
+
+        # Flatten options
+        outerOpts = '' .join(outerOpts)
+        innerOpts = ','.join(innerOpts)
+
+        # Add explanatory comments
+        self.before = self.explainBefore + (
+            Config.get('~sldBeginOpts')((outerOpts, innerOpts, title))
+            if innerOpts else
+            Config.get('~sldBegin')((outerOpts, title)))
+        self.after  = Config.getRaw('~sldEnd') + self.explainAfter
 
         # Return Hierarchy-built string
         return super(Slide, self).__str__()
@@ -285,6 +358,12 @@ class ListItem(Hierarchy):
 
     @classmethod
     def resolve(cls, docList, depth=0):
+        '''
+        Traverse given hierarchy collection and join adjacent list items of
+        compatible kinds. Recurse on hierarchies encountered.
+        :param docList: List of children of a collection to traverse
+        :param depth: Current nested list depth. Should not be >3
+        '''
         maxIndex = len(docList) - 1
 
         # Anti-stupid
@@ -299,7 +378,7 @@ class ListItem(Hierarchy):
 
                 # Begin list before current item if previous item doesn't exist, is not a list item, or is a list item of a different kind
                 if i == 0 or (docList[i-1].kind != l.kind if isinstance(docList[i-1], cls) else True):
-                    l.before = cls.begins[l.kind] + l.before
+                    l.before = l.explainBefore + cls.begins[l.kind] + l.before
 
                     # If this is an enumeration item which doesn't resume the counter, reset counter for current depth to 0
                     if l.kind == 1 and not l.resume:
@@ -307,7 +386,7 @@ class ListItem(Hierarchy):
 
                 # End list after current item if next item doesn't exist, is not a list item, or is a list item of a different kind
                 if i == maxIndex or (docList[i+1].kind != l.kind if isinstance(docList[i+1], cls) else True):
-                    l.after += cls.ends[l.kind]
+                    l.after += cls.ends[l.kind] + l.explainAfter
 
                 # Resume counters for enumerations that require it
                 l.before %= cls.enumCounterCmd % (cls.enumCounters[depth], cls.counterValues[depth]) if l.resume else ''
@@ -326,37 +405,37 @@ class ListItem(Hierarchy):
 
 class Column(Hierarchy):
 
-    def lateInit(self, txt, lineno, **kw):
-        lineno += 1
-        txt = txt.strip()
-
-        debug('Txt picked up by col:', txt, range=lineno)
-        i = txt.find('\n') # Guaranteed >0 by regex
-        head = txt[1:i].strip()
-        txt = txt[i:]
+    def lateInit(self, widthNum, widthUnit, align, content, lineno, **kw):
+        'Identify column width specification, parse contents'
 
         # Identify width params
         self.percentage = self.units = 0.0
-        self.unspecified = 0
-        if len(head) == 0:
-            self.unspecified = 1
-        elif head[-1:] == '%':
-            self.percentage = float(head[:-1]) * 0.01
+
+        if widthUnit: # Can either be '%' or None by regex
+            self.percentage = float(widthNum) * 0.01
+        elif widthNum:
+            self.units = float(widthNum)
         else:
-            self.units = float(head)
+            self.units = 1.0
+
+        self.align = align or ''
 
         slideLexer.lineno = lineno
-        self.children = slideParser.parse(txt, slideLexer)
+        self.children = slideParser.parse(content, slideLexer)
         self.after='\n'
 
     @classmethod
     def resolve(cls, docList):
+        '''
+        Traverse given hierarchy collection and join adjacent columns in column
+        environments; idistribute relative widths. Recurse on hierarchies encountered.
+        :param docList: List of children of a collection to traverse
+        '''
         currentColumnSet = []
         totalSpace = 1.0
         totalUnits = 0.0
-        unspecifiedCount = 0
 
-        # A dummy element at the end ensures the last column set is processed if the current docList ends with a column
+        # A dummy element at the end ensures the last column set is processed if the current docList ends with a column (hack)
         for elem in docList + [None]:
 
             # Column encountered. Add it to current set and adjust counters
@@ -364,14 +443,13 @@ class Column(Hierarchy):
                 currentColumnSet.append(elem)
                 totalSpace -= elem.percentage
                 totalUnits += elem.units
-                unspecifiedCount += elem.unspecified
 
             # Non-column encountered. If a nonempty set exists, process it now.
             elif len(currentColumnSet) > 0:
 
                 # Begin and end column environment around first and last columns of current set.
-                currentColumnSet[0].before = Config.getRaw('~colBegin')
-                currentColumnSet[-1].after += Config.getRaw('~colEnd')
+                currentColumnSet[0].before = currentColumnSet[0].explainBefore + Config.getRaw('~colBegin' + currentColumnSet[0].align)
+                currentColumnSet[-1].after += Config.getRaw('~colEnd') + currentColumnSet[-1].explainAfter
 
                 if totalSpace < 0.0: # Anti-stupid
                     warn('Fixed column widths exceed 100%.', totalSpace, 'remaining, setting to 0.')
@@ -379,20 +457,13 @@ class Column(Hierarchy):
 
                 # Generate column markers
                 for col in currentColumnSet:
-
-                    # If width unspecified, allocate space unclaimed by fixed-percentage columns
-                    if col.unspecified:
-                        col.percentage = totalSpace / unspecifiedCount
-
-                    col.before += Config.get('~colMarker')(col.percentage
-                                                  if col.percentage > 0.0
-                                                else col.units / totalUnits * totalSpace)
+                    p = totalSpace * col.units / totalUnits if col.units else col.percentage
+                    col.before += Config.get('~colMarker')(p)
 
                 # Reset counters and set
                 currentColumnSet = []
                 totalSpace = 1.0
                 totalUnits = 0.0
-                unspecifiedCount = 0
 
             # Recurse
             if isinstance(elem, Hierarchy):
@@ -455,12 +526,14 @@ class OrgTable(Hierarchy):
                     i += 1
 
     def __str__(self):
+        'Stringify table'
 
         # Stringify all children
         for arri in self.arr:
             for j in range(len(arri)):
                 arri[j] = ''.join(map(lambda x: str(x), arri[j])).strip()
 
+        # Regexs for identifying special types of cell contents
         rInteger = re.compile(r'-?\d+')
         rDecimalD = re.compile(r'-?\d*\.\d+')
         rDecimalC = re.compile(r'-?\d*,\d+')
@@ -531,7 +604,8 @@ class OrgTable(Hierarchy):
             end   += 'X'
 
         # Build LaTeX string
-        s = Config.get('~orgTable', begin)(aligns)
+        s = self.explainBefore
+        s += Config.get('~orgTable', begin)(aligns)
         hBar = Config.getRaw('~orgTable', 'hBar')
 
         for i in range(len(self.arr)):
@@ -544,6 +618,7 @@ class OrgTable(Hierarchy):
             s += hBar
 
         s += Config.getRaw('~orgTable', end)
+        s += '\n' + self.explainAfter
         return s
 
 
@@ -561,6 +636,7 @@ class Macro(Hierarchy):
 
     @classmethod
     def resolve(cls):
+        'Run Python snippet for every macro; parse results of those that return Beamr code'
         for macro in cls.macros:
 
             # Callback for user code to call if Beamr parsing is desired on macro result
@@ -590,6 +666,13 @@ class Macro(Hierarchy):
 class Box(Hierarchy):
 
     def lateInit(self, kind, title, content, lineno, **kw):
+        '''
+        Initialise box
+        :param kind: Symbol (one of ?!*) denoting box kind
+        :param title: Box title (will be parsed)
+        :param content: Box content (will be parsed)
+        :param lineno: Line number at the beginning of box
+        '''
         self.kind = kind
 
         slideLexer.lineno = lineno
@@ -598,16 +681,23 @@ class Box(Hierarchy):
         self.children = slideParser.parse(content, slideLexer)
     
     def __str__(self):
+        'Stringify box'
         title = ''.join(map(lambda x: str(x), self.title))
 
-        self.before = Config.get('~boxBegin', self.kind)(title)
-        self.after = Config.getRaw('~boxEnd', self.kind)
+        self.before = self.explainBefore + Config.get('~boxBegin', self.kind)(title)
+        self.after = Config.getRaw('~boxEnd', self.kind) + self.explainAfter
 
         return super(Box, self).__str__()
 
 
 class Emph(Hierarchy):
     def lateInit(self, flag, txt, lineno, **kw):
+        '''
+        Initialise emphasised text
+        :param flag: Emphasis flag
+        :param txt: Contents (will be parsed)
+        :param lineno: Line number at the beginning
+        '''
         slideLexer.lineno = lineno
         self.flag = flag
         self.children = slideParser.parse(txt, slideLexer)
@@ -618,6 +708,13 @@ class Emph(Hierarchy):
 
 class Stretch(Hierarchy):
     def lateInit(self, flagS, flagF, txt, lineno, **kw):
+        '''
+        Initialise square bracket construct
+        :param flagS: Flag at the start of construct
+        :param flagF: Flag at the end of construct
+        :param txt: Contents (will be parsed)
+        :param lineno: Line number at the beginning of construct
+        '''
         self.flagS = flagS or ''
         self.flagF = flagF or ''
 
@@ -626,6 +723,8 @@ class Stretch(Hierarchy):
             self.children = slideParser.parse(txt, slideLexer)
 
     def __str__(self):
+        '''Stringify by looking for appropriate command first by concatenated
+        flags, then by start flag, then by start flag in emph dictionary'''
         f = Config.get('stretch', self.flagS + self.flagF, default=None)
         if not f and self.flagS == self.flagF:
             f = Config.get('stretch', self.flagS, default=None)
@@ -638,6 +737,7 @@ class Stretch(Hierarchy):
 
 class Footnote(Hierarchy):
     def lateInit(self, txt, lineno, **kw):
+        'Separate text and label (as applicable)'
         i = txt.find(':')
         self.label = txt[0:i] if i > -1 else None
         txt = txt[i+1:]
@@ -647,6 +747,7 @@ class Footnote(Hierarchy):
             self.children = slideParser.parse(txt, slideLexer)
 
     def __str__(self):
+        'Pick the right command based on whether the footnote has label, contents, or both'
         if self.children:
             if self.label:
                 self.before = Config.get('~fnLabel')(self.label)

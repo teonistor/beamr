@@ -11,35 +11,46 @@ Beamr
 '''
 from __future__ import print_function
 import sys
+import os, re
 import beamr.debug as debug
 from beamr import setup_arg, cli_name
 from docopt import docopt
 
 
+_runPdflatex = ['pdflatex']
+_runLatexmk = ['latexmk', '-pdf', '-f']
+_runAny = ['-shell-escape', '-interaction=nonstopmode']
+_testLatexmk = ['latexmk', '--version']
+_rOutFile = re.compile(r'(.*\/)?((?:[^/])+?)(?:\.(pdf|tex))?$')
+
 def main():
+    'Run command line interface'
+
     halp = '''%s - %s
 
     Usage:
-        %s [-n|-p <cmd>] [-v|-q...] [-u|-s] [-c <cfg>] [--] [- | <input-file>] [- | <output-file>]
+        %s [-p|-n] [-s|-u] [-v|-q...] [-c <cfg>] [-g <eng>] [--nomk] [--] [- | <input-file>] [<output-file>]
         %s (-h|-e [<editor> -d]) [-v]
         %s --version
 
     Options:
-        -p <cmd>, --pdflatex=<cmd>  Specify pdflatex executable name and/or path to [default: pdflatex]
         -c <cfg>, --config=<cfg>    Override configuration. <cfg> must be valid Yaml
+        -g <eng>, --engine=<eng>    Call <eng> instead of latexmk (use --nomk if this is a pdflatex replacement)
         -e, --edit-config     Open user configuration file for editing. An editor must be specified if configuration doesn't exist or doesn't mention one
-        -d, --dump-config     Open user configuration file as above, but first add the default config at the bottom of it (will help the user see what is available for editing)
-        -n, --no-pdf   Don't create PDF output file (just generate Latex source)
-        -u, --unsafe   Trust certain user input which cannot be verified
-        -s, --safe     Don't trust user input which cannot be verified
+        -d, --dump-config     Open user configuration file as above, but first add the default config at the bottom of it (useful to see what is available for editing)
+        -p, --pdf      Create PDF output file (default unless output filename has .tex extension)
+        -n, --no-pdf   Don't create PDF output file (just generate LaTeX source)
+        -s, --safe     Omit unverified external files (default unless overriden in config)
+        -u, --unsafe   Trust unverified external files (useful when generating LaTeX code for elsewhere)
         -v, --verbose  Print inner workings of the lexer-parser-interpreter cycle and other debugging info to stderr
-        -q, --quiet    Once: mute pdflatex. Twice: also mute warnings. 3 ore more times: mute everything.
-        -h, --help     Show this message and exit.
-        --version      Print version information
+        -q, --quiet    Once: mute pdflatex/latexmk. Twice: also mute warnings. 3 times: mute everything
+        --nomk     Don't attempt to call latexmk
+        --help     Show this message and exit.
+        --version  Print version information
 ''' % (setup_arg['name'], setup_arg['description'], cli_name, cli_name, cli_name)
 
     # Parse arguments nicely with docopt
-    arg = docopt(halp,  version='Beamr version ' + setup_arg['version'])
+    arg = docopt(halp, version='Beamr version ' + setup_arg['version'])
 
     # Set logging level
     if arg['--verbose']:
@@ -55,24 +66,55 @@ def main():
     if arg['--edit-config']:
         return Config.editUserConfig(arg['<editor>'], arg['--dump-config'])
 
-    # Establish pdflatex command and parameters if required
-    pdflatex = None
-    if not arg['--no-pdf']:
-        pdflatex = [arg['--pdflatex'], '-shell-escape']
-        if arg['<output-file>']:
-            outFile = arg['<output-file>']
-            arg['<output-file>'] = None
-            i = outFile.rfind('/') + 1
-            if (i > 0):
-                pdflatex.append('-output-directory=' + outFile[:i])
-            pdflatex.append('-jobname=' + outFile[i:])
+    # Establish names and what to run
+    inFileName = arg['<input-file>']
+    if inFileName:
+        if not os.path.exists(inFileName):
+            conceptualName = inFileName
+            inFileName += '.bm'
+        elif inFileName[-3:] == '.bm':
+            conceptualName = inFileName[:-3]
+        else:
+            conceptualName = inFileName
+    else:
+        conceptualName = 'texput'
+
+    outFileName = arg['<output-file>']
+    if not outFileName:
+        if arg['--no-pdf']:
+            runThis = None
+        else:
+            runThis = _runAny
+        outFileName = conceptualName + '.tex'
+    elif outFileName == '-':
+        if arg['--pdf']:
+            runThis = _runAny
+            outFileName = conceptualName + '.tex'
+        else:
+            outFileName = None
+            runThis = None
+    else:
+        splitOut = _rOutFile.match(outFileName).groups()
+        outFileName = (splitOut[0] or '') + splitOut[1] + '.tex'
+
+        if arg['--no-pdf'] or splitOut[2] == 'tex' and not arg['--pdf']:
+            runThis = None
+        else:
+            runThis = _runAny
+            
+    if runThis:
+        splitOut = _rOutFile.match(outFileName).groups()
+        if splitOut[0]:
+            runThis.append('-output-directory=' + splitOut[0])
+        runThis.append(outFileName)
+
 
     # Open I/O files where relevant
-    if arg['<input-file>']:
-        debug.infname = arg['<input-file>']
-        sys.stdin = open(arg['<input-file>'], 'r')
-    if arg['<output-file>']:
-        sys.stdout = open(arg['<output-file>'], 'w')
+    if inFileName:
+        debug.infname = inFileName
+        sys.stdin = open(inFileName, 'r')
+    if outFileName:
+        sys.stdout = open(outFileName, 'w')
 
     # Decode other configuration
     cmdlineSpecial = {}
@@ -88,38 +130,48 @@ def main():
     with sys.stdin:
         with sys.stdout:
 
-            # Parse document
+            # Read and parse document
             doc = Document(sys.stdin.read())
             dic = {'s': str(doc)}
             ppc = '\n'.join(Config.getRaw('postProcess'))
             exec(ppc, dic)
             tex = dic['s']
 
-            # Run pdflatex on obtained tex source
-            if pdflatex:
-                from subprocess import Popen, PIPE
+            # Output LaTeX result
+            print(tex)
 
-                runkwarg = {'stdin': PIPE} # TODO Investigate encoding gotchas
-                if debug.quiet:
-                        runkwarg.update({'stdout': PIPE, 'stderr': PIPE})
+    # Run latexmk/pdflatex as required
+    if runThis != None:
+        from subprocess import Popen, call, PIPE
+        mute = {'stdout': PIPE, 'stderr': PIPE}
 
-                sp = Popen(pdflatex, **runkwarg)
-
-                try: # Python 3
-                    sp.communicate(bytes(tex, encoding='utf-8'))
-                except: # Python 2
-                    sp.communicate(bytes(tex))
-
-                sp.stdin.close()
-                rcode = sp.wait()
-
-                if rcode:
-                    debug.err('Fatal: pdflatex exited with nonzero status', rcode)
-                    return rcode
-
-            # Just output tex source
+        # Further establish what to run
+        if arg['--engine']:
+            if arg['--nomk']:
+                runThis = _runPdflatex + runThis
             else:
-                print(tex)
+                runThis = _runLatexmk + runThis
+            runThis[0] = arg['--engine']
+        elif not arg['--nomk']:
+            try:
+                call(_testLatexmk, **mute)
+                runThis = _runLatexmk + runThis
+            except:
+                runThis = _runPdflatex + runThis
+        else:
+            runThis = _runPdflatex + runThis
+
+        # And finally run it
+        runkwarg = {'stdin': PIPE}
+        if debug.quiet:
+            runkwarg.update(mute)
+        sp = Popen(runThis, **runkwarg)
+        sp.stdin.close()
+        rcode = sp.wait()
+
+        if rcode:
+            debug.err(runThis[0], 'exited with nonzero status', rcode)
+            return rcode
 
 
 if __name__ == "__main__":

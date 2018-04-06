@@ -49,8 +49,9 @@ def t_ART(t):
     t.value = beamr.interpreters.AsciiArt(t.value, **_argLineno(t.lexer, t.value))
     return t
 
+# For historical reasons called stretch; square bracket constructs were initially only for stretching and alignment, but that evolved
 def t_STRETCH(t):
-    r'\[(?P<STRETCH_FLAG_S>[<>_^:+*~.]{1,3})((?P<STRETCH_TXT>.*?[^\\])(?P<STRETCH_FLAG_F>(?P=STRETCH_FLAG_S)|[<>]))??\]'
+    r'\[(?P<STRETCH_FLAG_S>[<>_^:+*~.=!|@]{1,3})((?P<STRETCH_TXT>.*?[^\\])(?P<STRETCH_FLAG_F>(?P=STRETCH_FLAG_S)|[<>]))??\]'
     gd = t.lexer.lexmatch.groupdict()
     t.value = beamr.interpreters.Stretch(
         flagS=gd['STRETCH_FLAG_S'],
@@ -81,8 +82,9 @@ def t_FOOTNOTE(t):
     return t
 
 def t_URL(t):
-    r'\[.+?\]' # e.g. [https://www.example.com/]
-    t.value = beamr.interpreters.Url(t.value[1:-1], **_argLineno(t.lexer, t.value))
+    r'\[(?P<URL_TEXT>\[.+?\])?(?P<URL_TARGET>.+?)\]' # e.g. [https://www.example.com/], [[example]https://www.example.com/]
+    gd = t.lexer.lexmatch.groupdict()
+    t.value = beamr.interpreters.Url(gd['URL_TARGET'], text=gd['URL_TEXT'], **_argLineno(t.lexer, t.value))
     return t
     
 # e.g.:
@@ -100,8 +102,14 @@ def t_LISTITEM(t):
 # |20%
 #   Column content
 def t_COLUMN(t):
-    r'\n(?P<COL_INDENT> *)\|(\d*\.?\d+(%|)|) *(\n((?P=COL_INDENT) .*| *))+(?=\n|$)'
-    t.value = beamr.interpreters.Column(txt=t.value, **_argLineno(t.lexer, t.value))
+    r'\n(?P<COL_INDENT> *)\| *((?P<COL_WNUM>\d*\.?\d+)(?P<COL_WUNIT>%)?)? *(?P<COL_ALIGN>[_^])?(?P<COL_CONTENT>(\n((?P=COL_INDENT) .*| *))+)(?=\n|$)'
+    gd = t.lexer.lexmatch.groupdict()
+    t.value = beamr.interpreters.Column(
+        widthNum=gd['COL_WNUM'],
+        widthUnit=gd['COL_WUNIT'],
+        align=gd['COL_ALIGN'],
+        content=gd['COL_CONTENT'],
+        **_argLineno(t.lexer, t.value))
     return t
 
 def t_IMGENV(t):

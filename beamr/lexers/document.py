@@ -27,11 +27,15 @@ def t_HEADING(t):
     return t
 
 def t_SLIDE(t):
-    r'\n\[(?P<SLD_OPTS>\S*) ?(?P<SLD_TITLE>.*)(?P<SLD_CONTENT>[\s\S]*?)\n\]'
+    r'\n\[(?P<SLD_PLAIN>\/)?(?P<SLD_ALIGN>[_^])?(?P<SLD_OPTS>\S*) ?(?P<SLD_TITLE>.*)(\n~(?P<SLD_BG>[^\n|]*)(?P<SLD_BGUP>\|)?)?(?P<SLD_CONTENT>[\s\S]*?)\n\]'
     gd = t.lexer.lexmatch.groupdict()
     t.value = beamr.interpreters.Slide(
         title=gd['SLD_TITLE'],
         opts=gd['SLD_OPTS'],
+        plain=gd['SLD_PLAIN'],
+        align=gd['SLD_ALIGN'],
+        bg=gd['SLD_BG'],
+        bgUp=gd['SLD_BGUP'],
         content=gd['SLD_CONTENT'],
         **_argLineno(t.lexer, t.value))
     return t
@@ -59,6 +63,12 @@ def t_TEXT(t):
 lexer = lex.lex(debug=dbg.verbose, reflags=0)
 
 def _argLineno(lexer, text):
+    '''
+    Return a dictionary of the lexer in use, line number at the moment, and line number
+    post evaluation of text (useful for passing to interpreter constructors)
+    :param lexer: Current lexer instance in use
+    :param text: Text being evaluated
+    '''
     lineno = lexer.lineno
     nextlineno = lineno + text.count('\n')
     return {'lexer': lexer,

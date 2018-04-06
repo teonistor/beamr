@@ -94,9 +94,8 @@ editor: %s
 
         # Inline emphasis, e.g. *bold*, __underlined__ etc
         'emph': {
-                '*': r'\textbf{%s}',
-                '_': r'\textit{%s}',
-                '~': r'\sout{%s}',
+                '*' : r'\textbf{%s}',
+                '_' : r'\textit{%s}',
                 '**': r'\alert{%s}',
                 '__': r'\underline{%s}',
             },
@@ -107,6 +106,8 @@ editor: %s
                 '><':  '\\begin{center}\n%s\n\\end{center}',
                 '<<':  '\\begin{flushleft}\n%s\n\\end{flushleft}',
                 '>>':  '\\begin{flushright}\n%s\n\\end{flushright}',
+                '==': r'\texttt{%s}',
+                '~~': r'\sout{%s}',
                 '+' : r'\pause %s',
                 '>' : r'\hfill %s',
                 '^^': r'\vspace{-%s}',
@@ -216,16 +217,29 @@ editor: %s
         '~docEnd'   :  '\n\\end{document}\n',
 
         # Slide wrapper commands
-        '~sldBeginNormal'    : '\\begin{frame}{%s}\n',
-        '~sldBeginBreak'     : '\\begin{frame}[allowframebreaks]{%s}\n',
-        '~sldBeginShrink'    : '\\begin{frame}[shrink=%s]{%s}\n',
-        '~sldBeginShrinkAuto': '\\begin{frame}[shrink]{%s}\n',
-        '~sldEnd'            : '\n\\end{frame}\n',
+        '~sldBegin'       : r'{%s\begin{frame}{%s}',
+        '~sldBeginOpts'   : r'{%s\begin{frame}[%s]{%s}',
+        '~sldEnd'         : '\n\\end{frame}}\n',
+        '~sldOptsOut' : {
+                'plain'   : r'\setbeamertemplate{navigation symbols}{}',
+                'bgW'     : r'\setbeamertemplate{background}{\includegraphics[width=\paperwidth]{%s}}',
+                'bgH'     : r'\setbeamertemplate{background}{\includegraphics[height=\paperheight]{%s}}'
+            },
+        '~sldOptsIn'  : {
+                'break'   :  'allowframebreaks',
+                'plain'   :  'plain',
+                'align^'  :  't',
+                'align_'  :  'b',
+                'shrink'  :  'shrink=%s',
+                'shrinkA' :  'shrink',
+            },
 
         # Column wrapper commands
-        '~colBegin'  : '\\begin{columns}[totalwidth=\linewidth,t]\n',
-        '~colEnd'    : '\\end{columns}',
-        '~colMarker' : '\\column{%.3f\\textwidth}\n',
+        '~colBegin'   : '\\begin{columns}[c,totalwidth=\linewidth]\n',
+        '~colBegin^'  : '\\begin{columns}[t,totalwidth=\linewidth]\n',
+        '~colBegin_'  : '\\begin{columns}[b,totalwidth=\linewidth]\n',
+        '~colEnd'     : '\\end{columns}',
+        '~colMarker'  : '\\column{%.3f\\textwidth}\n',
 
         # Box wrapper commands
         '~boxBegin'  : {
@@ -249,10 +263,10 @@ editor: %s
         '~citeOpts'   : r'\cite[%s]{%s}',
 
         # Comment command
-        '~comment'    :  '%% %s\n',
+        '~comment'    :  '%% Comment from line %d:%s\n',
 
         # URL command
-        '~url'        :  r'\url{%s}',
+        '~url'        :  r'\href{%s}{\color{blue}%s}',
 
         # Heading commands
         '~heading'   : [
@@ -288,8 +302,8 @@ editor: %s
             },
 
         # "Scissor" operator commands
-        '~scissorSimple': r'{\setbeamercolor{background canvas}{bg=}\includepdf{%s}}' + '\n',
-        '~scissorPages' : r'{\setbeamercolor{background canvas}{bg=}\includepdf[pages={%s}]{%s}}' + '\n',
+        '~scissorSimple': r'{\setbeamercolor{background canvas}{bg=}\setbeamertemplate{navigation symbols}{}\includepdf{%s}}''\n',
+        '~scissorPages' : r'{\setbeamercolor{background canvas}{bg=}\setbeamertemplate{navigation symbols}{}\includepdf[pages={%s}]{%s}}''\n',
 
         # Only makes sense in user config, but placed here to avoid a spurious warning
         'editor': None
@@ -302,6 +316,9 @@ editor: %s
     cmdlineConfig = {}
 
     def __init__(self, txt, lineno, nextlineno, lexer):
+        ''' Set up a block of Yaml for parsing
+        :param txt: Yaml contents
+        '''
         self.parsedConfig = yaml.load_all(txt)
         self.rng = '%d-%d' % (lineno + 1, nextlineno)
         self.__class__.docConfig.append(self)
@@ -309,7 +326,11 @@ editor: %s
 
     @classmethod
     def resolve(cls):
-        configStubs = [cls.cmdlineConfig] # Config from command line
+        '''Parse configuration stubs from all over and update effective
+        configuration in the right order of precedence'''
+
+        # Config from command line
+        configStubs = [cls.cmdlineConfig]
 
         # Config from input file
         while len(cls.docConfig):
@@ -343,6 +364,11 @@ editor: %s
 
     @classmethod
     def fromCmdline(cls, general, **special):
+        '''
+        Save some configuration coming from command line
+        :param general: Configuration from -c argument
+        :param special: -s/-u argument
+        '''
         if general:
             try:
                 cls.recursiveUpdate(cls.cmdlineConfig, yaml.load(general))
@@ -352,6 +378,9 @@ editor: %s
 
     @classmethod
     def getRaw(cls, *arg):
+        '''
+        Return a certain piece of configuration. If not found, raise a warning and return None
+        :param arg: Dictionary keys / list indexes to traverse to dig into the configuration'''
         try:
             d = cls.effectiveConfig
             for i in range(len(arg)):
@@ -363,6 +392,14 @@ editor: %s
 
     @classmethod
     def get(cls, *arg, **kw):
+        '''
+        Return a function which takes the formatting arguments of a code snippet from
+        configuration and returns the formatted string
+        If not found, raise a warning and return the identity function
+        :param arg: Dictionary keys / list indexes to traverse to dig into the configuration
+        :param kw: Provide named argument 'default' to override the identity function
+                   returned when requested configuration is not found
+        '''
         try:
             d = cls.effectiveConfig
             for i in range(len(arg)):
@@ -376,16 +413,31 @@ editor: %s
 
     @classmethod
     def editUserConfig(cls, editor, dump):
+        ''' Open user config file for editing. Create it / dump defaults as necessary.
+        Called by cli as final action when -e argument given on terminal
+        :param editor: <editor> command line argument
+        :param dump: -d command line argument
+        '''
+
+        # No file -> need editor to know how to edit
         if not os.path.isfile(cls.userConfigPath):
             if editor:
+
+                # Write bare template
                 with open(cls.userConfigPath, 'w') as cf:
                     cf.write(cls.userConfigTemplate % editor)
+
+                    # Dump defaults if asked for
                     if dump:
                         cf.write(cls.dump())
                         dump = False
+
+            # No file, no editor -> cannot edit
             else:
                 err('Editor not given. Cannot edit.')
                 return 2
+
+        # File but no editor -> find out editor from file
         elif not editor:
             try:
                 with open(cls.userConfigPath, 'r') as cf:
@@ -393,19 +445,33 @@ editor: %s
                         if 'editor' in d:
                             editor = d['editor']
                             break
+
+            # Editor not in file -> cannot edit
             except Exception as e:
                 warn(repr(e))
             if not editor:
                 err('Editor not given. Cannot edit.')
                 return 3
+
+        # Dump defaults if asked for
         if dump:
             with open(cls.userConfigPath, 'a') as cf:
                 cf.write(cls.dump())
+
+        # Finally open editor
         subprocess.call([editor, cls.userConfigPath])
         return 0
 
     @staticmethod
     def recursiveUpdate(target, source, checkExists=False):
+        '''
+        Update a dictionary with another by merging subdictionaries
+        and updating sublists based on +/- prefixes
+        :param target: Dictionary to update
+        :param source: Contents to update with
+        :param checkExists: If true, raise a warning when a key in source doesn't
+                            exist in target (false by default)
+        '''
         for k in source:
 
             # Key doesn't exists in target => add from source, warn if necessary
@@ -439,7 +505,9 @@ editor: %s
 
     @classmethod
     def dump(cls):
+        'Return Yaml-formatted default configuration, wrapped in a user-friendly template'
         return cls.userConfigDumpTemplate % yaml.dump(cls.effectiveConfig, default_flow_style=False)
 
     def __str__(self):
+        'Return the empty string (configuration doesn\'t appear in final document)'
         return ''
