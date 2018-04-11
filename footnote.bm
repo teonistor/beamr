@@ -9,5 +9,5 @@ Beamr uses PLY[--plyman] for lexing and parsing.
 ]
 ---
 # Set bibliography file
-bib: res/bib
+bibFile: res/bib
 ...
