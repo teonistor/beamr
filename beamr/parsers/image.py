@@ -1,7 +1,12 @@
 '''
+Image frame parser
 Created on 15 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 import beamr.debug as debug
 from beamr.parsers.generic import p_nil  # Used internally by yacc() @UnusedImport

@@ -1,11 +1,20 @@
+'''
+Beamr - Minimal markup language for Beamer
 
-# Setup & usage content helpers
+Setup & usage content helpers
+
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
+'''
 
 cli_name = 'beamr'
 
 setup_arg = {
     'name': 'Beamr',
-    'version': '0.3.1',
+    'version': '0.3.3',
     'description': 'Markup language for Beamer',
     'long_description': 'Beamr is a markup language (and interpreter thereof) for creating PDF slide shows from simple, easy to understand text files. It uses the full power of LaTeX and its Beamer document class.',
     'keywords': 'Beamer,LaTeX',

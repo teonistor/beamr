@@ -1,8 +1,12 @@
 '''
+Leaf nodes of document hierarchy.
 Created on 6 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
 
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 from __future__ import division
 import os.path

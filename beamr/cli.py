@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 '''
-Beamr
+Beamr - Minimal markup language for Beamer
 
-@author:     Teodor Gherasim Nistor
+Command line interface module
 
-@copyright:  2018 Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
 
 @license:    MIT License
 '''

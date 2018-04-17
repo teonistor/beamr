@@ -1,7 +1,12 @@
 '''
+Document lexer defines tokens used at the root of the input file
 Created on 1 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 from ply import lex
 from beamr.lexers.generic import t_error  # Used internally by lex() @UnusedImport

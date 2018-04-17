@@ -1,7 +1,12 @@
 '''
+Logging utilities
 Created on 13 Nov 2017
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 from __future__ import print_function
 import sys

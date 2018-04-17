@@ -1,7 +1,12 @@
 '''
+Parser used at the root of input file
 Created on 1 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 from beamr.parsers.generic import p_nil, p_error  # Used internally by yacc() @UnusedImport
 from beamr.lexers.document import tokens  # Used internally by yacc() @UnusedImport

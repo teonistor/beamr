@@ -1,7 +1,12 @@
 '''
+Document nodes which can contain nested nodes.
 Created on 1 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 from beamr.debug import debug, warn, err
 from beamr.lexers import docLexer, slideLexer
@@ -65,6 +70,7 @@ class Hierarchy(object):
 
 
 class Document(Hierarchy):
+    'Root of document hierarchy'
 
     def __init__(self, txt, name=None):
 
@@ -609,12 +615,12 @@ class OrgTable(Hierarchy):
         hBar = Config.getRaw('~orgTable', 'hBar')
 
         for i in range(len(self.arr)):
-            if i in self.hBars:
+            for j in range(self.hBars.count(i)):
                 s += hBar
             s += '\n' + ' & '.join(self.arr[i]) + r' \\'
 
         # Don't forget horizontal bar spec after last line
-        if len(self.arr) in self.hBars:
+        for j in range(self.hBars.count(len(self.arr))):
             s += hBar
 
         s += Config.getRaw('~orgTable', end)

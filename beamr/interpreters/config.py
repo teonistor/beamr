@@ -1,7 +1,15 @@
 '''
+Config class is instantiated upon reading Yaml blocks.
+On the class level lives a large configuration dictionary, central to the flexible
+design of the tool, as well as helpers given config stubs from elsewhere.
+
 Created on 6 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 import yaml
 import subprocess
@@ -176,8 +184,11 @@ editor: %s
             'insertion': r'\codeSnippet%s '
             },
 
-        # TBC ascii arrow art et al
+        # Ascii arrow and ellipsis art
         '~asciiArt': {
+                '...'  : r'\ensuremath{\ldots}',
+                ':::'  : r'\resizebox{!}{1em}{\ensuremath{\vdots}}',
+                ':..'  : r'\resizebox{!}{1em}{\ensuremath{\ddots}}',
                 '-->'  : r'\ensuremath{\rightarrow}',
                 '<->'  : r'\ensuremath{\leftrightarrow}',
                 '<--'  : r'\ensuremath{\leftarrow}',

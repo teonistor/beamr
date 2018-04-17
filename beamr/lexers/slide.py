@@ -1,7 +1,15 @@
 '''
+Slide lexer defines tokens used on all but the first level of the input document
+(inside slides and inside all subsequent nested hierarchical nodes).
+Some document tokens are reused.
+
 Created on 1 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 from __future__ import unicode_literals
 from ply import lex
@@ -35,7 +43,7 @@ tokens = (
 
 
 def t_AUTORAW(t):
-    r'\\[a-zA-Z]+(\{.*?\}|<.*?>|\[.*?\])*(?=[^\]}>]|$)'
+    r'\\[a-zA-Z]+\*?(\{.*?\}|<.*?>|\[.*?\])*(?=[^\]}>]|$)' # e.g. \color{blue}
     t.value = beamr.interpreters.Text(t.value, **_argLineno(t.lexer, t.value))
     return t
 
@@ -45,7 +53,7 @@ def t_ESCAPE(t):
     return t
 
 def t_ART(t):
-    r'-->|<->|<--|\|->|<-\||==>|<=>|<==' # e.g. -->, <=>
+    r'-->|<->|<--|\|->|<-\||==>|<=>|<==|:\.\.|\.\.\.|:::' # e.g. -->, <=>, ...
     t.value = beamr.interpreters.AsciiArt(t.value, **_argLineno(t.lexer, t.value))
     return t
 

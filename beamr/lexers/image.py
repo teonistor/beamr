@@ -1,7 +1,12 @@
 '''
+Image frame lexer
 Created on 15 Feb 2018
 
-@author: Teodor Gherasim Nistor
+@author:     Teodor G Nistor
+
+@copyright:  2018 Teodor G Nistor
+
+@license:    MIT License
 '''
 from ply import lex
 
