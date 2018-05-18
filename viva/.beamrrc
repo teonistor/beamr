@@ -1,0 +1,26 @@
+---
+# Configuration necessary for the viva presentation
+
+packages:
+ - tikz
+ - adjustbox
+outerPreamblePost: '\usetikzlibrary{shapes.geometric}'
+stretch:
+  "@@": \only<2->{%s}
+  "!!": \only<%s>{\color{red}}
+macro:
+  xkcd: |
+    import requests, re, urllib
+    a = requests.get('https://xkcd.com/' + arg[1]).text
+    a = re.search(r'<div id="comic">[\s\S]*?<img src="(.*?)"[\s\S]*?<\/div>', a)
+    a = a.group(1)
+    if a[:2] == '//':
+      a = 'https:' + a
+    
+    s = '/tmp/xkcd_' + arg[1] + '.png'
+    
+    # Python 2 only
+    urllib.urlretrieve(a, s)
+    beamr('~{' + s + '}')
+
+...

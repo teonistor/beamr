@@ -1,0 +1,156 @@
+# This is the supporting slide show I used in my viva for this project, both as presentation and demo.
+# It requires the attached configuration
+
+[
+[< [!2!]Beamr  >]
+
+[^-1cm^]~
+[<Minimal Markup Language for [!3!]Beamer>]
+
+[+][+][+]
+[^-1cm^]~
+{{
+[< [!2!]Beamr  >]
+
+[^-1cm^]~
+[<Minimal Markup Language for [!3!]Beamer>]
+}}
+]
+
+
+[ Nature of the project
+|3
+ [>]Design~
+ 
+ [>][@Language specification@]~
+
+|2
+ [<-->>]
+
+|3
+ ~Implementation
+ 
+ ~[@Software engineering@]
+ 
+[+][+]
+[^-1cm^]~
+{{
+|3
+ [>]Design~
+ 
+ [>][@Language specification@]~
+
+|2
+ [<-->>]
+
+|3
+ ~Implementation
+ 
+ ~[@Software engineering@]
+}}
+]
+
+
+[ Languages to parse
+|5%_
+ \tikz[]{ \draw [<-] (0,0) -- (0,2.1); }
+|
+ - Less structure
+   - <3-> Natural languages
+   - <4-> **Markup languages**
+   - <2-> Programming languages
+ - More structure
+ 
+[+][+][+][+]
+[^-1cm^]~
+{{
+|5%_
+ \tikz[]{ \draw [<-] (0,0) -- (0,2.1); }
+|
+ - Less structure
+   - <3-> Natural languages
+   - <4-> **Markup languages**
+   - <2-> Programming languages
+ - More structure
+}}
+]
+
+
+[ System diagram
+&{
+\begin{adjustbox}{max width=\textwidth}
+\begin{tikzpicture}[ampersand replacement=\&]
+\matrix[row sep=1cm, column sep=0.7cm]
+{
+\& \& \&
+\node [draw,diamond,aspect=1.5] (cmd) {Command line}; \\
+\node [draw,diamond,aspect=1.5] (rc)  {\texttt{\ensuremath{\sim}/.beamrrc}}; \& \& \&
+\node [rectangle,draw] (yml) {Yaml deserialiser}; \& \& \&
+\node [rectangle,draw] (cfg) {\texttt{Config.resolve()}}; \\
+\node [draw,diamond,aspect=1.5] (in)  {\begin{adjustbox}{stack}Input file\\or \texttt{stdin}\end{adjustbox}}; \& \& \&
+\node [rectangle,draw] (init){\texttt{Document.\_\_init\_\_()} loop}; \& \& \&
+\node [rectangle,draw] (str) {\begin{adjustbox}{stack}\texttt{Document.\_\_str\_\_()}\\cascade\end{adjustbox}}; \\
+\& \&
+\node [rectangle,draw] (lex) {Lexers}; \& \&
+\node [rectangle,draw] (yac) {Parsers}; \& \&
+\node [rectangle,draw] (pdf) {\texttt{latexmk} / \texttt{pdflatex}}; \\
+\& \& \& \& \& \&
+\node [rectangle,draw,rounded corners=2mm] (out) {PDF file}; \\
+ };
+
+\draw[->] (cmd) to node[right] {\begin{adjustbox}{stack}Command line\\configuration\end{adjustbox}} (yml);
+\draw[->] (rc)  to node[above] {\begin{adjustbox}{stack}User\\configuration\end{adjustbox}} (yml);
+\draw[->] (yml) to node[above] {Configuration stubs} (cfg);
+\draw[->] (init) to node[right] {Document config} (yml);
+\draw[->] (cfg) to node[right] {\begin{adjustbox}{stack}Effective\\configuration\end{adjustbox}} (str);
+\draw[->] (in)  to node[above] {Input} (init);
+\draw[->] (init) to node[above] {Document tree} (str);
+\draw[->] (init) to node[left] {Input substrings} (lex);
+\draw[->] (yac) to node[right] {Component lists} (init);
+\draw[->] (lex) to node[below] {Token streams} (yac);
+\draw[->] (str) to node[right] {\LaTeX\ code} (pdf);
+\draw[->] (pdf) to node[right] {} (out);
+
+\end{tikzpicture}
+\end{adjustbox}
+}
+]
+
+
+[.50 XKCD 353
+|50%
+ %{xkcd 353}
+|3%
+ ~
+|
+ [+]
+ {{
+ %{xkcd 353}
+ }}
+ 
+ [+]
+ [^-1cm^]~
+ {{
+ ---
+ macro:
+  xkcd: |
+    import requests, re, urllib
+    a = requests.get('https://xkcd.com/' + arg[1]).text
+    a = re.search(r'<div id="comic">[\s\S]*?<img src="(.*?)"[\s\S]*?<\/div>', a)
+    a = a.group(1)
+    if a[:2] == '//':
+      a = 'https:' + a
+    
+    s = '/tmp/xkcd_' + arg[1] + '.png'
+    
+    # Python 2 only
+    urllib.urlretrieve(a, s)
+    beamr('~{' + s + '}')
+ ...
+ }}
+]
+
+
+[/
+[<   Thank you   >]
+]
