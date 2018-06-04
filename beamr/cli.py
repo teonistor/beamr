@@ -19,10 +19,6 @@ from beamr import setup_arg, cli_name
 from docopt import docopt
 
 
-_runPdflatex = ['pdflatex']
-_runLatexmk = ['latexmk', '-pdf', '-f']
-_runAny = ['-shell-escape', '-interaction=nonstopmode']
-_testLatexmk = ['latexmk', '--version']
 _rOutFile = re.compile(r'(.*\/)?((?:[^/])+?)(?:\.(pdf|tex))?$')
 
 def main():
@@ -31,13 +27,12 @@ def main():
     halp = '''%s - %s
 
     Usage:
-        %s [-p|-n] [-s|-u] [-v|-q...] [-c <cfg>] [-g <eng>] [--nomk] [--] [- | <input-file>] [<output-file>]
+        %s [-p|-n] [-s|-u] [-v|-q...] [-c <cfg>...] [--nomk] [--] [- | <input-file>] [<output-file>]
         %s (-h|-e [<editor> -d]) [-v]
         %s --version
 
     Options:
-        -c <cfg>, --config=<cfg>    Override configuration. <cfg> must be valid Yaml
-        -g <eng>, --engine=<eng>    Call <eng> instead of latexmk (use --nomk if this is a pdflatex replacement)
+        -c <cfg>, --config=<cfg>    Override configuration. <cfg> can be Yaml code or a file name
         -e, --edit-config     Open user configuration file for editing. An editor must be specified if configuration doesn't exist or doesn't mention one
         -d, --dump-config     Open user configuration file as above, but first add the default config at the bottom of it (useful to see what is available for editing)
         -p, --pdf      Create PDF output file (default unless output filename has .tex extension)
@@ -86,11 +81,11 @@ def main():
         if arg['--no-pdf']:
             runThis = None
         else:
-            runThis = _runAny
+            runThis = Config.getRaw('pdfEngines', 'all')
         outFileName = conceptualName + '.tex'
     elif outFileName == '-':
         if arg['--pdf']:
-            runThis = _runAny
+            runThis = Config.getRaw('pdfEngines', 'all')
             outFileName = conceptualName + '.tex'
         else:
             outFileName = None
@@ -102,7 +97,7 @@ def main():
         if arg['--no-pdf'] or splitOut[2] == 'tex' and not arg['--pdf']:
             runThis = None
         else:
-            runThis = _runAny
+            runThis = Config.getRaw('pdfEngines', 'all')
             
     if runThis:
         splitOut = _rOutFile.match(outFileName).groups()
@@ -148,20 +143,14 @@ def main():
         mute = {'stdout': PIPE, 'stderr': PIPE}
 
         # Further establish what to run
-        if arg['--engine']:
-            if arg['--nomk']:
-                runThis = _runPdflatex + runThis
-            else:
-                runThis = _runLatexmk + runThis
-            runThis[0] = arg['--engine']
-        elif not arg['--nomk']:
+        if not arg['--nomk']:
             try:
-                call(_testLatexmk, **mute)
-                runThis = _runLatexmk + runThis
+                call(Config.getRaw('pdfEngines', 'test'), **mute)
+                runThis = Config.getRaw('pdfEngines', 'latexmk') + runThis
             except:
-                runThis = _runPdflatex + runThis
+                runThis = Config.getRaw('pdfEngines', 'pdflatex') + runThis
         else:
-            runThis = _runPdflatex + runThis
+            runThis = Config.getRaw('pdfEngines', 'pdflatex') + runThis
 
         # And finally run it
         runkwarg = {'stdin': PIPE}

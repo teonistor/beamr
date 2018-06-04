@@ -48,12 +48,12 @@ def t_AUTORAW(t):
     return t
 
 def t_ESCAPE(t):
-    r'\\[^0-9A-Za-z\s]' # e.g. \# Inspired from https://github.com/Khan/simple-markdown/blob/master/simple-markdown.js
+    r'\\[^0-9A-Za-z\s\\]' # e.g. \# Inspired from https://github.com/Khan/simple-markdown/blob/master/simple-markdown.js
     t.value = beamr.interpreters.Escape(t.value, **_argLineno(t.lexer, t.value))
     return t
 
 def t_ART(t):
-    r'-->|<->|<--|\|->|<-\||==>|<=>|<==|:\.\.|\.\.\.|:::' # e.g. -->, <=>, ...
+    r'-->|<->|<--|\|->|<-\||==>|<=>|<==|:\.\.|\.\.\.|:::|\\{2,3}' # e.g. -->, <=>, ...
     t.value = beamr.interpreters.AsciiArt(t.value, **_argLineno(t.lexer, t.value))
     return t
 
@@ -126,8 +126,10 @@ def t_IMGENV(t):
     return t
 
 def t_PLUSENV(t):
-    r'\n(?P<PLUS_INDENT> *)\[[\s\S]+?\n(?P=PLUS_INDENT)\]'
-    t.value = beamr.interpreters.PlusEnv(t.value, **_argLineno(t.lexer, t.value))
+    r'\n(?P<PLUS_INDENT> *)\[(?P<PLUS_TXT>[\s\S]+?\n)(?P=PLUS_INDENT)\]'
+    t.value = beamr.interpreters.PlusEnv(
+        t.lexer.lexmatch.group('PLUS_TXT'),
+        **_argLineno(t.lexer, t.value))
     return t
 
 def t_TABENV(t):

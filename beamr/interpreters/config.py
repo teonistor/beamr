@@ -81,6 +81,7 @@ editor: %s
                 'pdfpages',
                 'upquote',
                 'normalem,ulem',
+                'tikz',
                 'tabularx',
                 'dcolumn'
             ],
@@ -124,10 +125,18 @@ editor: %s
             },
 
         # Environment to use for verbatim
-        'verbatim': 'listings',
+        'verbatim'  : 'listings',
 
         # User macros will be placed here
-        'macro'   :  {},
+        'macro'     : {},
+
+        # Arguments for underlying PDF engines
+        'pdfEngines': {
+            'pdflatex': ['pdflatex'],
+            'latexmk' : ['latexmk', '-pdf', '-f'],
+            'all'     : ['-shell-escape', '-interaction=nonstopmode'],
+            'test'    : ['latexmk', '--version']
+        },
 
         # User-configurable custom LaTeX code insertion points
         'docclassPre'      : [],
@@ -189,6 +198,8 @@ editor: %s
                 '...'  : r'\ensuremath{\ldots}',
                 ':::'  : r'\resizebox{!}{1em}{\ensuremath{\vdots}}',
                 ':..'  : r'\resizebox{!}{1em}{\ensuremath{\ddots}}',
+                '\\'*2 : r'\newline ',
+                '\\'*3 : r'\textbackslash ',
                 '-->'  : r'\ensuremath{\rightarrow}',
                 '<->'  : r'\ensuremath{\leftrightarrow}',
                 '<--'  : r'\ensuremath{\leftarrow}',
@@ -323,6 +334,9 @@ editor: %s
     # Config instances left to process from document
     docConfig = []
 
+    # Config files to process from command line
+    configFiles = []
+
     # Store command-line config for updating after document config has been loaded
     cmdlineConfig = {}
 
@@ -353,9 +367,19 @@ editor: %s
             except Exception as e: # If there was bad Yaml
                 warn('Bad configuration block:', e, range=thisConfig.rng)
 
-        # Config from user config file
+        # Config from user config file(s)
+        for cf in reversed(cls.configFiles):
+            cls.fromConfigFile(configStubs, cf, True)
+        cls.fromConfigFile(configStubs, cls.userConfigPath, False)
+
+        # Update effective config above with all these
+        for c in reversed(configStubs):
+            cls.recursiveUpdate(cls.effectiveConfig, c, True)
+
+    @staticmethod
+    def fromConfigFile(configStubs, filePath, fileShouldExist):
         try:
-            with open(cls.userConfigPath, 'r') as cf:
+            with open(filePath, 'r') as cf:
                 try:
                     for stub in yaml.load_all(re.sub( # Get rid of text outside Yaml markers
                             r'(^|\n\.\.\.)[\s\S]*?($|\n---)',
@@ -365,13 +389,10 @@ editor: %s
                         if isinstance(stub, dict):
                             configStubs.append(stub)
                 except Exception as e: # If there was bad Yaml
-                    warn('Bad user configuration file:', e)
-        except: # If file is nonexistent or unreadable
-            pass
-
-        # Update effective config above with all these
-        for c in reversed(configStubs):
-            cls.recursiveUpdate(cls.effectiveConfig, c, True)
+                    warn('Malformatted configuration file ', filePath, ':', e)
+        except Exception as e: # If file is nonexistent or unreadable
+            if fileShouldExist:
+                warn('Could not read configuration file ', filePath, ':', e)
 
     @classmethod
     def fromCmdline(cls, general, **special):
@@ -380,9 +401,18 @@ editor: %s
         :param general: Configuration from -c argument
         :param special: -s/-u argument
         '''
-        if general:
+        for gen in general:
             try:
-                cls.recursiveUpdate(cls.cmdlineConfig, yaml.load(general))
+                gen = yaml.load(gen)
+
+                # Dictionary => Contents to update config with
+                if (isinstance(gen, dict)):
+                    cls.recursiveUpdate(cls.cmdlineConfig, gen)
+
+                # String => File name to process later
+                else:
+                    cls.configFiles.append(gen)
+
             except Exception as e:
                 warn(repr(e), 'when parsing config from command line')
         cls.recursiveUpdate(cls.cmdlineConfig, special)

@@ -12,7 +12,7 @@ from beamr.debug import debug, warn, err
 from beamr.lexers import docLexer, slideLexer
 from beamr.parsers import docParser, slideParser
 from beamr.interpreters import Config, VerbatimEnv
-from beamr.interpreters.textual import _fullmatch_greedy
+from beamr.interpreters.textual import _fullmatch_greedy, PlusEnv
 from collections import deque
 import re
 
@@ -99,6 +99,7 @@ class Document(Hierarchy):
 
         # Document class and package commands
         packageDef = '\n'.join(Config.getRaw('docclassPre'))
+        packageDef += PlusEnv.docclassPre
         packageDef += self.splitCmd(Config.getRaw('~docclass'), Config.getRaw('docclass'))
         packageDef += '\n'.join(Config.getRaw('packageDefPre'))
         for pkg in Config.effectiveConfig['packages']:
@@ -107,6 +108,7 @@ class Document(Hierarchy):
 
         # Outer preamble commands
         outerPreamble = '\n'.join(Config.getRaw('outerPreamblePre'))
+        outerPreamble += PlusEnv.outerPreamblePre
         titleNonBlank = False
 
         for cmd in ['theme', 'scheme']:
@@ -159,6 +161,7 @@ class Document(Hierarchy):
         if not Config.getRaw('headerToc'):
             outerPreamble += Config.getRaw('~headerNoToc')
 
+        outerPreamble += PlusEnv.outerPreamblePost
         outerPreamble += '\n'.join(Config.getRaw('outerPreamblePost'))
 
         # Inner preamble commands

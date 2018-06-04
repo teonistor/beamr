@@ -14,7 +14,7 @@ cli_name = 'beamr'
 
 setup_arg = {
     'name': 'Beamr',
-    'version': '0.3.3',
+    'version': '0.3.4',
     'description': 'Markup language for Beamer',
     'long_description': 'Beamr is a markup language (and interpreter thereof) for creating PDF slide shows from simple, easy to understand text files. It uses the full power of LaTeX and its Beamer document class.',
     'keywords': 'Beamer,LaTeX',

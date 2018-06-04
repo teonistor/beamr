@@ -11,6 +11,7 @@ Created on 6 Feb 2018
 from __future__ import division
 import os.path
 import re
+from subprocess import Popen, PIPE
 from beamr.lexers import imageLexer
 from beamr.parsers import imageParser
 from beamr.debug import debug, warn
@@ -144,14 +145,8 @@ class ImageEnv(Text):
 
     @classmethod
     def checkFile(cls, file):
-        'Check the validity of a file as best as possible under current configuration'
-        if cls.pilImage:
-            try:
-                cls.pilImage.open(file)
-                return True
-            except:
-                return False
-        cls.pilWarn()
+        'Check the existence of a file'
+        # Checking file with PIL has been abolished as of 0.3.4
         return os.path.isfile(file)
 
     def resolveFile(self, file):
@@ -167,18 +162,18 @@ class ImageEnv(Text):
             warn('Image Frame: Could not find file', file, range=self.lineno)
         return None
 
-    @classmethod
-    def getDims(cls, file):
+    def getDims(self, file):
         '''Obtain and return image dimensions.
-        If file not given or not openable, return None
-        If file given but PIL unavailable, return dummy dimensions (1,1)'''
+        If file not given return None
+        If file given but not openable or PIL unavailable, return dummy dimensions (1,1)'''
         if file:
-            if cls.pilImage:
+            if self.pilImage:
                 try:
-                    return cls.pilImage.open(file).size
+                    return self.pilImage.open(file).size
                 except:
-                    return None
-            cls.pilWarn()
+                    warn('Image Frame: Could not read dimensions for', file, range=self.lineno)
+                    return (1,1)
+            self.pilWarn()
             return (1,1)
         return None
 
@@ -344,10 +339,52 @@ class ImageEnv(Text):
 
 
 class PlusEnv(Text):
-    def __str__(self):
-        '# TODO'
-        warn('Plus integration not yet implemented', range=self.lineno+1)
-        return ''
+    # Experimental...
+    stuffOrder = ['tikz', 'tp_top', 'tp_style', 'tp_pre-style', 'tp_preamble', 'tp_lib']
+    runPlus = ['plus', '-g', ','.join(stuffOrder)]
+    separate = re.compile(r'\n'.join(['(%%% ' + s + r'\n[\s\S]*?)' for s in stuffOrder]) + '$')
+
+    docclassPre = ''
+    outerPreamblePre = ''
+    outerPreamblePost = ''
+
+    docclassPreOrder = [2]
+    outerPreamblePreOrder = []
+    outerPreamblePostOrder = [5, 6, 4, 3]
+    tikzOrder = [1]
+
+    def __init__(self, txt, lineno, nextlineno, lexer):
+        'Try and run the Plus external binary to obtain preamble code and tikz for the frame'
+        super(PlusEnv, self).__init__('', lineno, nextlineno, lexer)
+
+        try:
+            sp = Popen(self.runPlus, stdin=PIPE, stdout=PIPE)
+            sr = sp.communicate(txt)[0]
+            ss = self.separate.match(sr)
+
+            if not ss:
+                warn('Plus returned incomplete result', range=self.lineno+1)
+                return
+
+            # Construct docclassPre, outerPreamblePre, and outerPreamblePost for
+            # this Plus diagram and replace preexistent ones if new ones longer
+            # (experimental)
+            docclassPre = ''.join([ss.group(i) + '\n' for i in self.docclassPreOrder])
+            outerPreamblePre = ''.join([ss.group(i) + '\n' for i in self.outerPreamblePreOrder])
+            outerPreamblePost = ''.join([ss.group(i) + '\n' for i in self.outerPreamblePostOrder])
+
+            if (len(self.docclassPre) < len(docclassPre)):
+                self.__class__.docclassPre = docclassPre
+            if (len(self.outerPreamblePre) < len(outerPreamblePre)):
+                self.__class__.outerPreamblePre = outerPreamblePre
+            if (len(self.outerPreamblePost) < len(outerPreamblePost)):
+                self.__class__.outerPreamblePost = outerPreamblePost
+
+            warn('Plus integration is currently experimental and may fail for multiple diagrams', range=self.lineno+1)
+            self.txt = ''.join(['\n' + ss.group(i) for i in self.tikzOrder])
+
+        except Exception as e:
+            warn('Error processing Plus', e, range=self.lineno+1)
 
 
 class ScissorEnv(Text):
