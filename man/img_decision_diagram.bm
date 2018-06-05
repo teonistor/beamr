@@ -1,0 +1,36 @@
+# This generates the Image frame Decision Diagram
+
+[/.58
+ [[
+   .   .   .   c{Use full path}
+   .   . b{For every graphics path and file\\extension: check if file exists}
+   .  a{\textit{safe} flag?} . d{Drop image frame}
+   .   . e{Just use file name}
+   {~\vspace{1cm}~}* -> f{How many files\\in use?} . . g{Use full path and real image dimensions}
+   . . . h{Is PIL available?}
+   . . i{\textit{safe} flag?} . j{Use full path and dummy dimensions}
+   .  k{For every file, every graphics path, and every\\file extension: check if file exists} . l{Is PIL available?} ->:{Yes}: {Use relative name and real image dimensions}
+   . . . . m{Use relative name and dummy dimensions}
+   . . n{\textit{safe} flag?} ->:{\texttt{-{}-safe}}[below]: {Drop file}
+   
+   
+  ]
+  
+  a(->:{\texttt{-{}-safe}}:b)
+  a(->:{\texttt{-{}-unsafe}}:e)
+  b(->:{Found}[below]:c)
+  b(->:{Not found}:d)
+  f(->:{$1$}[left]:a)
+  i(->:{\texttt{-{}-safe}}:h)
+  h(->:{Yes}:g)
+  h(->:{No}:j)
+  f(->:{$2..\infty$}[left]:k)
+  i(->:{\texttt{-{}-unsafe}}:l)
+  k(->:{Found}:i)
+  l(->:{No}[below]:m)
+  k(->:{Not found}:n)
+  n(->:{\texttt{-{}-unsafe}}:m)
+  
+  *:circle, fill
+ ]
+]

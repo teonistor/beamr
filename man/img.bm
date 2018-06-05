@@ -5,6 +5,7 @@ Below is an image of boats in the sunset, taken somewhere around Lymington Pier:
 ]
 
 [ Matrix
+
 ~{house boats house
   seven beach
   house seven boats + }
@@ -22,6 +23,7 @@ Now let's write the number 7 out of images of itself:
 ]
 
 [ Horizontal strip
+
 ~{house boats seven boats -}
 
 Of course, you can squeeze an image by specifying both dimensions:
@@ -30,6 +32,7 @@ Of course, you can squeeze an image by specifying both dimensions:
 ]
 
 [ Vertical strip
+
 ~{house boats house beach boats |}
 ]
 
