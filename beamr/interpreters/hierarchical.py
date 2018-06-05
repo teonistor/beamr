@@ -250,7 +250,8 @@ class Slide(Hierarchy):
 
         slideLexer.lineno = lineno + 1
         self.title = slideParser.parse(title, slideLexer)
-        slideLexer.lineno = lineno + 2
+        if bg:
+            slideLexer.lineno += 1 # Background specification takes up one more line if present
         self.children = slideParser.parse(content, slideLexer)
 
         # Hierarchical children of this slide will have added themselves to the parsing queue which we process now
@@ -414,7 +415,7 @@ class ListItem(Hierarchy):
 
 class Column(Hierarchy):
 
-    def lateInit(self, widthNum, widthUnit, align, content, lineno, **kw):
+    def lateInit(self, widthNum, widthUnit, align, overlay, content, lineno, **kw):
         'Identify column width specification, parse contents'
 
         # Identify width params
@@ -428,6 +429,7 @@ class Column(Hierarchy):
             self.units = 1.0
 
         self.align = align or ''
+        self.overlay = overlay or ''
 
         slideLexer.lineno = lineno
         self.children = slideParser.parse(content, slideLexer)
@@ -467,7 +469,7 @@ class Column(Hierarchy):
                 # Generate column markers
                 for col in currentColumnSet:
                     p = totalSpace * col.units / totalUnits if col.units else col.percentage
-                    col.before += Config.get('~colMarker')(p)
+                    col.before += Config.get('~colMarker')((p, col.overlay))
 
                 # Reset counters and set
                 currentColumnSet = []
@@ -674,12 +676,13 @@ class Macro(Hierarchy):
 
 class Box(Hierarchy):
 
-    def lateInit(self, kind, title, content, lineno, **kw):
+    def lateInit(self, kind, title, content, overlay, lineno, **kw):
         '''
         Initialise box
         :param kind: Symbol (one of ?!*) denoting box kind
         :param title: Box title (will be parsed)
         :param content: Box content (will be parsed)
+        :param overlay: Beamer overlay command
         :param lineno: Line number at the beginning of box
         '''
         self.kind = kind
@@ -688,12 +691,13 @@ class Box(Hierarchy):
         self.title = slideParser.parse(title, slideLexer)
         slideLexer.lineno = lineno + 1
         self.children = slideParser.parse(content, slideLexer)
-    
+        self.overlay = overlay or ''
+
     def __str__(self):
         'Stringify box'
         title = ''.join(map(lambda x: str(x), self.title))
 
-        self.before = self.explainBefore + Config.get('~boxBegin', self.kind)(title)
+        self.before = self.explainBefore + Config.get('~boxBegin', self.kind)((title, self.overlay))
         self.after = Config.getRaw('~boxEnd', self.kind) + self.explainAfter
 
         return super(Box, self).__str__()
@@ -745,15 +749,14 @@ class Stretch(Hierarchy):
 
 
 class Footnote(Hierarchy):
-    def lateInit(self, txt, lineno, **kw):
-        'Separate text and label (as applicable)'
-        i = txt.find(':')
-        self.label = txt[0:i] if i > -1 else None
-        txt = txt[i+1:]
-        
-        if txt:
+    def lateInit(self, label, text, overlay, lineno, **kw):
+        self.label = label
+        self.overlay = overlay or ''
+        self.lineno = lineno
+
+        if text:
             slideLexer.lineno = lineno
-            self.children = slideParser.parse(txt, slideLexer)
+            self.children = slideParser.parse(text, slideLexer)
 
     def __str__(self):
         'Pick the right command based on whether the footnote has label, contents, or both'
@@ -762,8 +765,10 @@ class Footnote(Hierarchy):
                 self.before = Config.get('~fnLabel')(self.label)
             else:
                 self.before = Config.getRaw('~fnSimple')
-            self.after = '}'
+            self.after = '}' + self.overlay
         elif self.label:
             self.before = Config.get('~fnOnlyLabel')(self.label)
+            if self.overlay:
+                warn('Ignoring overlay indicator on label-only footnote', range=self.lineno)
 
         return super(Footnote, self).__str__()

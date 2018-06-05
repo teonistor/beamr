@@ -119,9 +119,9 @@ editor: %s
                 '~~': r'\sout{%s}',
                 '+' : r'\pause %s',
                 '>' : r'\hfill %s',
-                '^^': r'\vspace{-%s}',
+                '^^': r'\vskip -%s ',
                 '..': r'{\footnotesize %s}',
-                ':' : r'\vspace{5mm}%s'
+                ':' : r'\vskip 5mm %s'
             },
 
         # Environment to use for verbatim
@@ -261,13 +261,13 @@ editor: %s
         '~colBegin^'  : '\\begin{columns}[t,totalwidth=\linewidth]\n',
         '~colBegin_'  : '\\begin{columns}[b,totalwidth=\linewidth]\n',
         '~colEnd'     : '\\end{columns}',
-        '~colMarker'  : '\\column{%.3f\\textwidth}\n',
+        '~colMarker'  : '\\column{%.3f\\textwidth}%s\n',
 
         # Box wrapper commands
         '~boxBegin'  : {
-                '*'   :  '\\begin{block}{%s}\n',
-                '!'   :  '\\begin{alertblock}{%s}\n',
-                '?'   :  '\\begin{exampleblock}{%s}\n'
+                '*'   :  '\\begin{block}{%s}%s\n',
+                '!'   :  '\\begin{alertblock}{%s}%s\n',
+                '?'   :  '\\begin{exampleblock}{%s}%s\n'
             },
         '~boxEnd'    : {
                 '*'   :  '\\end{block}\n',
@@ -302,7 +302,9 @@ editor: %s
                 'wh' : r'\includegraphics[width=%.3f%s,height=%.3f%s]{%s}',
                 'w-' : r'\includegraphics[width=%.3f%s]{%s}',
                 '-h' : r'\includegraphics[height=%.3f%s]{%s}',
-                '--' : r'\includegraphics[%s]{%s}'
+                '--' : r'\includegraphics[%s]{%s}',
+                'space'   : r'\hskip %.3f%s ',
+                'overlay' : r'\alt%s{%s}{%s}'
             },
 
         # Org Table commands

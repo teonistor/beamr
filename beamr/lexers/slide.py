@@ -85,8 +85,13 @@ def t_CITATION(t):
     return t
 
 def t_FOOTNOTE(t):
-    r'\[-.+?-\]' # e.g. [-24:See attached docs-]
-    t.value = beamr.interpreters.Footnote(txt=t.value[2:-2], **_argLineno(t.lexer, t.value))
+    r'\[-((?P<FN_LABEL>.*?):)?(?P<FN_TXT>.*?)-\](?P<FN_OVRL>\<.*?\>)?' # e.g. [-24:See attached docs-]
+    gd = t.lexer.lexmatch.groupdict()
+    t.value = beamr.interpreters.Footnote(
+        label=gd['FN_LABEL'],
+        text=gd['FN_TXT'],
+        overlay=gd['FN_OVRL'],
+        **_argLineno(t.lexer, t.value))
     return t
 
 def t_URL(t):
@@ -110,18 +115,19 @@ def t_LISTITEM(t):
 # |20%
 #   Column content
 def t_COLUMN(t):
-    r'\n(?P<COL_INDENT> *)\| *((?P<COL_WNUM>\d*\.?\d+)(?P<COL_WUNIT>%)?)? *(?P<COL_ALIGN>[_^])?(?P<COL_CONTENT>(\n((?P=COL_INDENT) .*| *))+)(?=\n|$)'
+    r'\n(?P<COL_INDENT> *)\| *((?P<COL_WNUM>\d*\.?\d+)(?P<COL_WUNIT>%)?)? *(?P<COL_ALIGN>[_^])? *(?P<COL_OVRL>\<.*\>)?(?P<COL_CONTENT>(\n((?P=COL_INDENT) .*| *))+)(?=\n|$)'
     gd = t.lexer.lexmatch.groupdict()
     t.value = beamr.interpreters.Column(
         widthNum=gd['COL_WNUM'],
         widthUnit=gd['COL_WUNIT'],
         align=gd['COL_ALIGN'],
+        overlay=gd['COL_OVRL'],
         content=gd['COL_CONTENT'],
         **_argLineno(t.lexer, t.value))
     return t
 
 def t_IMGENV(t):
-    r'~{[\s\S]*?}'
+    r'~{[\s\S]*?}(\<.*\>)?'
     t.value = beamr.interpreters.ImageEnv(t.value, **_argLineno(t.lexer, t.value))
     return t
 
@@ -151,12 +157,13 @@ def t_VERBATIM(t):
     return t
 
 def t_BOX(t):
-    r'\n(?P<BOX_INDENT> *)\((?P<BOX_KIND>\*|!|\?)(?P<BOX_TITLE>.*)(?P<BOX_CONTENT>[\s\S]+?)\n(?P=BOX_INDENT)\)'
+    r'\n(?P<BOX_INDENT> *)\((?P<BOX_KIND>\*|!|\?)(?P<BOX_TITLE>.*)(?P<BOX_CONTENT>[\s\S]+?)\n(?P=BOX_INDENT)\)(?P<BOX_OVRL>\<.*?\>)?'
     gd = t.lexer.lexmatch.groupdict()
     t.value = beamr.interpreters.Box(
         kind=gd['BOX_KIND'].strip(),
         title=gd['BOX_TITLE'],
         content=gd['BOX_CONTENT'],
+        overlay=gd['BOX_OVRL'],
         **_argLineno(t.lexer, t.value))
     return t
 

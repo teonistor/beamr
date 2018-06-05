@@ -18,18 +18,19 @@ tokens = (
        'VBAR',
        'HBAR',
        'PLUS',
-       'HASH',
-       'BIGO',
-       'LEFT',
-       'RIGHT',
-       'UP',
-       'DOWN',
+#        'HASH',
+#        'BIGO',
+       'OVRL',
+#        'LEFT',
+#        'RIGHT',
+#        'UP',
+#        'DOWN',
        'NUM',
        'UNIT',
        'X',
+       'DOT',
        'QFILE',
        'FILE',
-       'DOT',
        'LF'
        )
 
@@ -47,54 +48,34 @@ def t_PLUS(t):
     r'\+'
     return t
 
-def t_HASH(t):
-    r'#' # 
-    return t
-
-def t_BIGO(t):
-    r'O(?= |$)' # Is only big-O symbol when followed by space or end of string
-    return t
-
-def t_LEFT(t):
-    r'<' # 
-    return t
-
-def t_RIGHT(t):
-    r'>' # 
-    return t
-
-def t_UP(t):
-    r'\^' # 
-    return t
-
-def t_DOWN(t):
-    r'v(?= |$)' # Is only down symbol when followed by space or end of string
+def t_OVRL(t):
+    r'<.*?>' # Beamer overlay, e.g. <2->
     return t
 
 def t_NUM(t):
-    r'\d+(\.\d+)?' # 
+    r'\d+(\.\d+)?' # Number, optionally with decimal point e.g. 2, 3.7 but not 4. or .9
     return t
 
 def t_UNIT(t):
-    r'cm|pt|em|%(?=x\d|$)' # Is only unit when followed by other measurement or end of string
+    r'cm|pt|ex|mm|in|em|%(?=x\d|$)' # Is only unit when followed by other measurement or end of string
     return t
 
 def t_X(t):
     r'x(?=\d)' # Is only unit delimiter when followed by other measurement
     return t
 
+def t_DOT(t):
+    r'\.'
+    t.value = (None, None) # Placeholder for a gap in the grid => no file name, no overlay
+    return t
+
 def t_QFILE(t):
     r'".+?"'
-    t.value = t.value[1:-1]
+    t.value = t.value[1:-1] # Strip the quotes from around the file name
     return t
 
 def t_FILE(t):
-    r'[^ \n]+'
-    return t
-
-def t_DOT(t):
-    r'\.'
-    t.value = None
+    r'[^ \n<]+'
     return t
 
 def t_LF(t):

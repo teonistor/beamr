@@ -10,6 +10,7 @@ Created on 6 Feb 2018
 '''
 from __future__ import division
 import os.path
+import sys
 import re
 from subprocess import Popen, PIPE
 from beamr.lexers import imageLexer
@@ -132,7 +133,7 @@ class ImageEnv(Text):
     pilErr = None
 
     def __init__(self, txt, lineno, nextlineno, lexer, **kw):
-        super(ImageEnv, self).__init__(txt[2:-1].strip(), lineno, nextlineno, lexer, **kw)
+        super(ImageEnv, self).__init__(txt, lineno, nextlineno, lexer, **kw)
 
         # First time setup
         if self.__class__.firstRun:
@@ -151,7 +152,7 @@ class ImageEnv(Text):
 
     def resolveFile(self, file):
         'Recurse through file paths and extensions until a file is found and return its full path'
-        if file and file != '.':
+        if file:
             from beamr.interpreters import Config
             for path in Config.getRaw('graphicspath'):
                 f = os.path.join(path, file)
@@ -189,10 +190,13 @@ class ImageEnv(Text):
         imageLexer.lineno = self.lineno
         self.lineno = '%d-%d' % (self.lineno, self.nextlineno)
 
+        # Separate main contents from Beamer overlay
+        self.txt = self.txt[2:].split('}')
+
         # Try and parse contents
         try:
-            self.files, self.shape, self.align, self.dims = imageParser.parse(self.txt, imageLexer)
-            debug(self.files, self.shape, self.align, self.dims, range=self.lineno)
+            self.files, self.shape, self.dims = imageParser.parse(self.txt[0], imageLexer)
+            debug(self.files, self.shape, self.dims, range=self.lineno)
 
         # Anti-stupid: Ignore an empty environment
         except:
@@ -201,33 +205,44 @@ class ImageEnv(Text):
         if not self.files:
             return ''
 
+        self.txt = self.txt[1] # Only keep the overlay command here, if any
         from beamr.interpreters import Config
 
         # One image...
-        def singleImage(dims, file, makeHspace=False, implicitDims=r'width=\textwidth'):
+        def singleImage(dims, file, overlay, makeHspace=False, implicitDims=r'width=\textwidth'):
             '''
             Return the LaTeX command to insert this one image
             :param dims: Image dimensions, as a tuple of optional tuples of numbers and units
             :param file: File name or path
+            :param overlay: Beamer overlay indicator
             :param makeHspace: Whether to return command for a horizontal space instead if file is None
             :param implicitDims: Dimensions to be used instead if all tuples in dims are None
             '''
-            if not file:
-                if makeHspace and dims[0]:
-                    return r'\hspace{%.3f%s}' % dims[0]
-                else:
-                    return ''
 
+            # Build the \hskip command (not always necessary)
+            hspace = Config.get('~image', 'space')(dims[0]) if dims[0] else ''
+
+            # If file absent, just return the space if possible and necessary
+            if not file:
+                return hspace if makeHspace else ''
+
+            # Build the \includegraphics command
             if dims[0]:
                 if dims[1]:
-                    return Config.get('~image', 'wh')((dims[0][0], dims[0][1], dims[1][0], dims[1][1], file))
+                    gphx = Config.get('~image', 'wh')((dims[0][0], dims[0][1], dims[1][0], dims[1][1], file))
                 else:
-                    return Config.get('~image', 'w-')((dims[0][0], dims[0][1], file))
+                    gphx = Config.get('~image', 'w-')((dims[0][0], dims[0][1], file))
             else:
                 if dims[1]:
-                    return Config.get('~image', '-h')((dims[1][0], dims[1][1], file))
+                    gphx = Config.get('~image', '-h')((dims[1][0], dims[1][1], file))
                 else:
-                    return Config.get('~image', '--')((implicitDims, file))
+                    gphx = Config.get('~image', '--')((implicitDims, file))
+
+            # Decide whether an \alt is necessary for Beamer overlay
+            if overlay:
+                return Config.get('~image', 'overlay')((overlay, gphx, hspace))
+            else:
+                return gphx
 
         # Multi image...
 
@@ -259,7 +274,7 @@ class ImageEnv(Text):
             for i in range(len(files)):
                 imageDims.append([])
                 for j in range(len(files[i])):
-                    file = self.resolveFile(files[i][j])
+                    file = self.resolveFile(files[i][j][0])
 
                     if file:
                         w,h = self.getDims(file)
@@ -271,10 +286,10 @@ class ImageEnv(Text):
                         imageDims[i].append(None)
                         incorrectQ.append((i,j))
 
-                    if safe or files[i][j] == '.':
+                    if safe:
                         if file:
-                            debug('Image frame:', files[i][j], 'resolved as', file, range=self.lineno)
-                        files[i][j] = file
+                            debug('Image frame:', files[i][j][0], 'resolved as', file, range=self.lineno)
+                        files[i][j] = (file, files[i][j][1])
 
             if correctCount:
                 incorrectDims = (sumW / correctCount, sumH / correctCount)
@@ -304,6 +319,10 @@ class ImageEnv(Text):
                     sumW = thisRowW
                 sumH += imageDims[i][0][1]
 
+            # Prevents float imprecision from causing overflows
+            sumW *= 1.001
+            sumH *= 1.001
+
             # Stage 3: Generate code
             s = ''
             for i in range(len(files)):
@@ -315,7 +334,7 @@ class ImageEnv(Text):
                             thisDim = ((imageDims[i][j][0] / sumW, r'\textwidth'), None)
                         else:
                             thisDim = (None, (imageDims[i][j][1] / sumH, r'\textheight'))
-                    s += singleImage(thisDim, files[i][j], True)
+                    s += singleImage(thisDim, files[i][j][0], files[i][j][1] or self.txt, True)
                 s += r'\mbox{}\\'
             return s
 
@@ -329,10 +348,10 @@ class ImageEnv(Text):
             if len(self.files) > 1 or len(self.files[0]) > 1:
                 warn('Image frame: Shape not specified therefore only first of multiple files will be used', range=self.lineno)
             if Config.getRaw('safe'):
-                file = self.resolveFile(self.files[0][0])
-                return singleImage(self.dims, file)
+                file = self.resolveFile(self.files[0][0][0])
+                return singleImage(self.dims, file, self.files[0][0][1] or self.txt)
             else:
-                return singleImage(self.dims, self.files[0][0])
+                return singleImage(self.dims, self.files[0][0][0], self.files[0][0][1] or self.txt)
 
         # Multi image, choose from shape above
         return shapes[self.shape](self.dims, self.files)
@@ -434,6 +453,20 @@ class VerbatimEnv(Text):
         :param lexer: Lexer instance in use
         '''
         super(VerbatimEnv, self).__init__(txt, lineno, nextlineno, lexer, **kw)
+
+        # Remove common white space from the beginning of lines of code
+        r = re.compile(' *')
+        def countWs(line):
+            count = r.match(line).end()
+            if count == len(line): # Completely blank lines don't count towards the minimum
+                return sys.maxsize
+            return count
+
+        txt = txt.splitlines()
+        commonWs = min([countWs(line) for line in txt])
+        txt = '\n'.join([line[commonWs:] for line in txt])
+
+        # Save head and body for later use by the resolver
         self.head = head
         self.body = txt
 
