@@ -1,0 +1,34 @@
+[ Lists, columns, footnotes
+|
+ The following list will be revealed in a strange order:
+ -. <4-> This one fourth
+ -. <2-> Then this
+ -. <1-> First this
+ -. <5-> This one last
+ -. <3-> This third
+
+| <3->
+  This column will become visible[-But the footnote will only appear after the list-]<6-> at the same time as the bottom element in the list on the left
+]
+
+[^ Boxes, images
+
+(? Permanent box with slowly revealing image grid
+ ~{house<1-4> boats<6-> house<2-5>
+   seven<4> beach<3-> beach<9->
+   house<7-> seven<5-> boats<8-> + 40%}
+
+)
+
+(* Box appearing later
+ ~{ house
+    boats<10->
+    seven - }<7->
+)<6->
+
+]
+
+---
+# Remember to set the graphics path
+graphicspath: res
+...
