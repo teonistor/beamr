@@ -346,7 +346,7 @@ editor: %s
         ''' Set up a block of Yaml for parsing
         :param txt: Yaml contents
         '''
-        self.parsedConfig = yaml.load_all(txt)
+        self.parsedConfig = yaml.safe_load_all(txt)
         self.rng = '%d-%d' % (lineno + 1, nextlineno)
         self.__class__.docConfig.append(self)
         lexer.lineno = nextlineno
@@ -383,7 +383,7 @@ editor: %s
         try:
             with open(filePath, 'r') as cf:
                 try:
-                    for stub in yaml.load_all(re.sub( # Get rid of text outside Yaml markers
+                    for stub in yaml.safe_load_all(re.sub( # Get rid of text outside Yaml markers
                             r'(^|\n\.\.\.)[\s\S]*?($|\n---)',
                             '\n---',
                             '\n' + cf.read()
@@ -405,7 +405,7 @@ editor: %s
         '''
         for gen in general:
             try:
-                gen = yaml.load(gen)
+                gen = yaml.safe_load(gen)
 
                 # Dictionary => Contents to update config with
                 if (isinstance(gen, dict)):
@@ -484,7 +484,7 @@ editor: %s
         elif not editor:
             try:
                 with open(cls.userConfigPath, 'r') as cf:
-                    for d in yaml.load_all(cf):
+                    for d in yaml.safe_load_all(cf):
                         if 'editor' in d:
                             editor = d['editor']
                             break

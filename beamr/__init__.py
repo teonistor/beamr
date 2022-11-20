@@ -26,7 +26,7 @@ setup_arg = {
     'author_email': 'tn1g15@ecs.soton.ac.uk',
     'license': 'MIT',
     'classifiers': ['Programming Language :: Python', 'Development Status :: 4 - Beta'],
-    'install_requires': ['ply>=3.11', 'pyaml>=17.12', 'docopt>=0.6'],
+    'install_requires': ['ply>=3.11', 'PyYAML>=6.0', 'docopt>=0.6'],
     'python_requires': '>2.6',
     'entry_points': {
         'console_scripts': [
