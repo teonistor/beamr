@@ -14,7 +14,7 @@ cli_name = 'beamr'
 
 setup_arg = {
     'name': 'Beamr',
-    'version': '0.3.5',
+    'version': '0.4.0',
     'description': 'Markup language for Beamer',
     'long_description': 'Beamr is a markup language (and interpreter thereof) for creating PDF slide shows from simple, easy to understand text files. It uses the full power of LaTeX and its Beamer document class.',
     'keywords': 'Beamer,LaTeX',
@@ -26,8 +26,8 @@ setup_arg = {
     'author_email': 'tn1g15@ecs.soton.ac.uk',
     'license': 'MIT',
     'classifiers': ['Programming Language :: Python', 'Development Status :: 4 - Beta'],
-    'install_requires': ['ply>=3.11', 'pyaml>=17.12', 'docopt>=0.6'],
-    'python_requires': '>2.6',
+    'install_requires': ['ply>=3.11', 'PyYAML>=6.0', 'docopt>=0.6'],
+    'python_requires': '>=3.4',
     'entry_points': {
         'console_scripts': [
             '%s=beamr.cli:main' % cli_name,
